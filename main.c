@@ -10,7 +10,7 @@
 
 #define MAX_FILENAME_LENGTH 1000
 
-//used functions
+// init
 
 int create_configs(char *username, char *email)
 {
@@ -18,44 +18,45 @@ int create_configs(char *username, char *email)
     if (file == NULL)
         return 1;
 
-    fprintf(file, "username: %s\n",username);
-    fprintf(file, "email: %s\n",email);
-    fprintf(file, "branch: %s\n","master");
+    fprintf(file, "username: %s\n", username);
+    fprintf(file, "email: %s\n", email);
+    fprintf(file, "branch: %s\n", "master");
 
     fclose(file);
+
+    // file = fopen(".sammit/staging")
+
     return 0;
 }
 
-int add_to_staging(char *filepath){
-    
-}
-
-//called in main functions
-
-int run_init(int argc, char *const argv[])
+int doesHaveInit(char cwd[])
 {
-    char cwd[MAX_FILENAME_LENGTH];
-    if (getcwd(cwd, sizeof(cwd)) == NULL)
-        return 1;
-    printf("current directory is %s\n", cwd);
 
-    bool dirExists = false;
+    int dirExists = 0;
     struct dirent *entry;
     char tmp_dir[MAX_FILENAME_LENGTH];
+
     do
     {
         // opens current directory
         DIR *dir = opendir(".");
         if (dir == NULL)
-            return 1;
+        {
+            perror("Could not DIR current directory!");
+            return 2;
+        }
 
         // inputs current directy in tmp_dir
         if (getcwd(tmp_dir, sizeof(tmp_dir)) == NULL)
-            return 1;
+        {
+            perror("Error getting current temp directory!\n");
+            return 2;
+        }
 
         // checks if we are at "/" or not
         if (strcmp(tmp_dir, "/") == 0)
         {
+            closedir(dir);
             break;
         }
 
@@ -65,44 +66,98 @@ int run_init(int argc, char *const argv[])
             if (entry->d_type == DT_DIR && strcmp(entry->d_name, ".sammit") == 0)
             {
                 // printf(".sammit exists\n");
-                dirExists = true;
+                dirExists = 1;
             }
         }
+        closedir(dir);
 
         printf("we are at %s\n", tmp_dir);
         // goes to the parent directory
         if (chdir("..") != 0)
-            return 1;
+        {
+            perror("Failed to change directory to parent folder");
+            return 2;
+        }
 
     } while (strcmp(tmp_dir, "/") != 0);
 
+    // goes to main directory
     if (chdir(cwd) != 0)
-        return 1;
-
-    if (dirExists)
     {
-        perror("sammit repo already exists.\n");
+        perror("Could not go to main directory!");
+        return 2;
     }
-    else
+
+    return dirExists;
+}
+
+int run_init(int argc, char *const argv[])
+{
+    // finds current directory
+    char cwd[MAX_FILENAME_LENGTH];
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        perror("Could not get main directory!");
+        return 1;
+    }
+    printf("current directory is %s\n", cwd);
+
+    // checks if .sammit exists
+    int dirExists = doesHaveInit(cwd);
+
+    if (dirExists == 1)
+    {
+        perror("sammit repo already exists!");
+    }
+    else if (dirExists == 0)
     {
         // MUST MAKE .sammit AND CONFIGS
         if (mkdir(".sammit", 0755) != 0)
         {
             return 1;
         }
-        create_configs("ArshiaSamiezad","arshiasamiezad@gmail.com");
+        create_configs("ArshiaSamiezad", "arshiasamiezad@gmail.com");
     }
+    else
+        return 1;
     return 0;
 }
 
-int run_add(int argc, char *const argv[]){
-    if(argc < 3){
+// add
+
+int run_add(int argc, char *const argv[])
+{
+    // finds current directory
+    char cwd[MAX_FILENAME_LENGTH];
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        perror("Could not get main directory!");
+        return 1;
+    }
+    printf("current directory is %s\n", cwd);
+
+    // checks if repo has been initialized
+    if(doesHaveInit(cwd) != 1){
+        perror("Repo hasn't initialized!");
+        return 1;
+    }
+
+    // checks if it is a valid command
+    if (argc < 3)
+    {
         perror("Please enter a valid command");
         return 1;
     }
 
-    char * filepath = argv[2];
+    char *filepath = argv[2];
 }
+
+int add_to_staging(char *filepath)
+{
+    return 0;
+}
+
+// testing command
 
 void print_command(int argc, char *const argv[])
 {
@@ -125,8 +180,9 @@ int main(int argc, char *argv[])
     {
         run_init(argc, argv);
     }
-    else if (strcmp(argv[1],"add")==0){
-        run_add(argc,argv);
+    else if (strcmp(argv[1], "add") == 0)
+    {
+        run_add(argc, argv);
     }
 
     return 0;
