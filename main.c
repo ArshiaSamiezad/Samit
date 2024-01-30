@@ -12,6 +12,82 @@
 #define MAX_FILENAME_LENGTH 1000
 
 char main_dir[MAX_FILENAME_LENGTH];
+char staging_dir[MAX_FILENAME_LENGTH];
+char commits_dir[MAX_FILENAME_LENGTH];
+char branches_dir[MAX_FILENAME_LENGTH];
+
+int return_sammit()
+{
+    char cwd[MAX_FILENAME_LENGTH];
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        perror("Could not get main directory!");
+        return 1;
+    }
+
+    int dirExists = 0;
+    struct dirent *entry;
+    char tmp_dir[MAX_FILENAME_LENGTH];
+
+    do
+    {
+        // opens current directory
+        DIR *dir = opendir(".");
+        if (dir == NULL)
+        {
+            perror("Could not DIR current directory!");
+            return 1;
+        }
+
+        // inputs current directy in tmp_dir
+        if (getcwd(tmp_dir, sizeof(tmp_dir)) == NULL)
+        {
+            perror("Error getting current temp directory!\n");
+            return 1;
+        }
+
+        // checks if we are at "/" or not
+        if (strcmp(tmp_dir, "/") == 0)
+        {
+            closedir(dir);
+            break;
+        }
+
+        // checks if .sammit is in the current temp directory or not
+        while ((entry = readdir(dir)) != NULL)
+        {
+            if (entry->d_type == DT_DIR && strcmp(entry->d_name, ".sammit") == 0)
+            {
+                // printf(".sammit exists\n");
+                if (getcwd(main_dir, sizeof(tmp_dir)) == NULL)
+                {
+                    perror("Error getting main directory!\n");
+                    return 1;
+                }
+            }
+        }
+        closedir(dir);
+
+        // printf("we are at %s\n", tmp_dir);
+
+        // goes to the parent directory
+        if (chdir("..") != 0)
+        {
+            perror("Failed to change directory to parent folder");
+            return 1;
+        }
+
+    } while (strcmp(tmp_dir, "/") != 0);
+
+    // goes to main directory
+    if (chdir(cwd) != 0)
+    {
+        perror("Could not go to main directory!");
+        return 1;
+    }
+
+    return 0;
+}
 
 int create_configs(char *username, char *email)
 {
@@ -27,18 +103,44 @@ int create_configs(char *username, char *email)
 
     chdir(".sammit");
 
+    // staging directory
     if (mkdir("staging", 0755) != 0)
     {
         return 1;
     }
+    chdir("staging");
+    if (getcwd(staging_dir, sizeof(staging_dir)) == NULL)
+    {
+        perror("Could not write staging directory!");
+        return 1;
+    }
+    chdir("..");
+
+    // commits directory
     if (mkdir("commits", 0755) != 0)
     {
         return 1;
     }
+    chdir("commits");
+    if (getcwd(commits_dir, sizeof(commits_dir)) == NULL)
+    {
+        perror("Could not write commits directory!");
+        return 1;
+    }
+    chdir("..");
+
+    // branches directory
     if (mkdir("branches", 0755) != 0)
     {
         return 1;
     }
+    chdir("branches");
+    if (getcwd(branches_dir, sizeof(branches_dir)) == NULL)
+    {
+        perror("Could not write branches directory!");
+        return 1;
+    }
+    chdir("..");
 
     chdir("..");
 
@@ -117,7 +219,7 @@ int run_init(int argc, char *const argv[])
         perror("Could not get main directory!");
         return 1;
     }
-    printf("current directory is %s\n", cwd);
+    // printf("current directory is %s\n", cwd);
 
     // checks if .sammit exists
     int dirExists = doesHaveInit(cwd);
@@ -209,8 +311,12 @@ int run_add(int argc, char *const argv[])
         }
         for (int i = 0; i < globbuf.gl_pathc; i++)
         {
-            //printf("%s %d\n", globbuf.gl_pathv[i], globbuf.gl_pathc);
-            
+            // printf("%s %d\n", globbuf.gl_pathv[i], globbuf.gl_pathc);
+            char destination_file[MAX_FILENAME_LENGTH];
+            strcpy(destination_file, staging_dir);
+            strcat(destination_file, "/");
+            strcat(destination_file, globbuf.gl_pathv[i]);
+            copy_file(globbuf.gl_pathv[i], destination_file);
         }
         globfree(&globbuf);
         closedir(dir);
@@ -220,6 +326,7 @@ int run_add(int argc, char *const argv[])
 
 int copy_file(char *src_path, char *dest_path)
 {
+    printf("source is %s and dest is %s\n", src_path, dest_path);
     return 0;
 }
 
