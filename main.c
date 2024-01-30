@@ -7,12 +7,11 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <glob.h>
 
 #define MAX_FILENAME_LENGTH 1000
 
 char main_dir[MAX_FILENAME_LENGTH];
-
-// init
 
 int create_configs(char *username, char *email)
 {
@@ -88,7 +87,7 @@ int doesHaveInit(char cwd[])
         }
         closedir(dir);
 
-        //printf("we are at %s\n", tmp_dir);
+        // printf("we are at %s\n", tmp_dir);
 
         // goes to the parent directory
         if (chdir("..") != 0)
@@ -142,8 +141,6 @@ int run_init(int argc, char *const argv[])
     return 0;
 }
 
-// add
-
 int run_add(int argc, char *const argv[])
 {
     // finds current directory
@@ -153,7 +150,7 @@ int run_add(int argc, char *const argv[])
         perror("Could not get main directory!");
         return 1;
     }
-    //printf("current directory is %s\n", cwd);
+    // printf("current directory is %s\n", cwd);
 
     // checks if repo has been initialized
     if (doesHaveInit(cwd) != 1)
@@ -193,19 +190,6 @@ int run_add(int argc, char *const argv[])
     else
     {
         chdir(main_dir);
-        int wild_card_index = -1;
-        // for (int i = 0; i < strlen(argv[2]); i++)
-        // {
-        //     printf("i is %d and char is %c\n",i,argv[2][i]);
-        //     if (argv[2][i] == '*')
-        //     {
-        //         wild_card_index = i;
-        //         break;
-        //     }
-        // }
-        printf("%s %s\n",argv[2],argv[2]);
-
-        printf("wild card is %d\n",wild_card_index);
 
         struct dirent *entry;
         DIR *dir = opendir(".");
@@ -215,61 +199,26 @@ int run_add(int argc, char *const argv[])
             return 2;
         }
 
-        while ((entry = readdir(dir)) != NULL)
+        // finding wildcards
+        // check if there is no match
+        glob_t globbuf;
+        if (glob(argv[2], 0, NULL, &globbuf) != 0)
         {
-            // skips . and ..
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-            {
-                continue;
-            }
-
-            // finding wildcards
-            if (wild_card_index != -1)
-            {
-                int is_same_name = 0;
-                int second_wild_part_counter = 0;
-                if (strncmp(argv[2], entry->d_name, wild_card_index) == 0)
-                {
-                    printf("first part is same\n");
-                    char copy_argv[strlen(argv[2]) + 1];
-                    strcpy(copy_argv, argv[2]);
-                    char *tokenize[3];
-                    tokenize[0] = strtok(copy_argv, "*");
-                    int index = 0;
-                    while (tokenize[index])
-                    {
-                        index++;
-                        tokenize[index] = strtok(NULL, "*");
-                    }
-
-                    for (int i = wild_card_index + 1; i < strlen(entry->d_name); i++)
-                    {
-                        if (tokenize[1][second_wild_part_counter] == entry->d_name[i])
-                        {
-                            second_wild_part_counter++;
-                        }
-                        else
-                        {
-                            second_wild_part_counter = 0;
-                        }
-                        if (second_wild_part_counter == strlen(tokenize[1]))
-                        {
-                            is_same_name = 1;
-                        }
-                    }
-                }
-                if (is_same_name){
-                    //stage it
-                    printf("%s\n",entry->d_name);
-                }
-            }
+            perror("No match.\n");
+            return 1;
         }
+        for (int i = 0; i < globbuf.gl_pathc; i++)
+        {
+            //printf("%s %d\n", globbuf.gl_pathv[i], globbuf.gl_pathc);
+            
+        }
+        globfree(&globbuf);
         closedir(dir);
     }
     return 0;
 }
 
-int add_to_staging(char *filepath)
+int copy_file(char *src_path, char *dest_path)
 {
     return 0;
 }
