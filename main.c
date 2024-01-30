@@ -10,6 +10,28 @@
 
 #define MAX_FILENAME_LENGTH 1000
 
+//used functions
+
+int create_configs(char *username, char *email)
+{
+    FILE *file = fopen(".sammit/config", "w");
+    if (file == NULL)
+        return 1;
+
+    fprintf(file, "username: %s\n",username);
+    fprintf(file, "email: %s\n",email);
+    fprintf(file, "branch: %s\n","master");
+
+    fclose(file);
+    return 0;
+}
+
+int add_to_staging(char *filepath){
+    
+}
+
+//called in main functions
+
 int run_init(int argc, char *const argv[])
 {
     char cwd[MAX_FILENAME_LENGTH];
@@ -73,18 +95,13 @@ int run_init(int argc, char *const argv[])
     return 0;
 }
 
-int create_configs(char *username, char *email)
-{
-    FILE *file = fopen(".sammit/config", "w");
-    if (file == NULL)
+int run_add(int argc, char *const argv[]){
+    if(argc < 3){
+        perror("Please enter a valid command");
         return 1;
+    }
 
-    fprintf(file, "username: %s\n",username);
-    fprintf(file, "email: %s\n",email);
-    fprintf(file, "branch: %s\n","master");
-
-    fclose(file);
-    return 0;
+    char * filepath = argv[2];
 }
 
 void print_command(int argc, char *const argv[])
@@ -107,6 +124,9 @@ int main(int argc, char *argv[])
     if (strcmp(argv[1], "init") == 0)
     {
         run_init(argc, argv);
+    }
+    else if (strcmp(argv[1],"add")==0){
+        run_add(argc,argv);
     }
 
     return 0;
