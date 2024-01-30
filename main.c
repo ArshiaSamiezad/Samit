@@ -10,6 +10,8 @@
 
 #define MAX_FILENAME_LENGTH 1000
 
+char main_dir[MAX_FILENAME_LENGTH];
+
 // init
 
 int create_configs(char *username, char *email)
@@ -24,7 +26,22 @@ int create_configs(char *username, char *email)
 
     fclose(file);
 
-    // file = fopen(".sammit/staging")
+    chdir(".sammit");
+
+    if (mkdir("staging", 0755) != 0)
+    {
+        return 1;
+    }
+    if (mkdir("commits", 0755) != 0)
+    {
+        return 1;
+    }
+    if (mkdir("branches", 0755) != 0)
+    {
+        return 1;
+    }
+
+    chdir("..");
 
     return 0;
 }
@@ -117,6 +134,7 @@ int run_init(int argc, char *const argv[])
             return 1;
         }
         create_configs("ArshiaSamiezad", "arshiasamiezad@gmail.com");
+        strcpy(main_dir, cwd);
     }
     else
         return 1;
@@ -137,7 +155,8 @@ int run_add(int argc, char *const argv[])
     printf("current directory is %s\n", cwd);
 
     // checks if repo has been initialized
-    if(doesHaveInit(cwd) != 1){
+    if (doesHaveInit(cwd) != 1)
+    {
         perror("Repo hasn't initialized!");
         return 1;
     }
@@ -187,3 +206,11 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+
+// Arshia Samiezad 402111498
+
+/*Github token is:
+
+Username: ArshiaSamiezad
+Password: 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
+*/
