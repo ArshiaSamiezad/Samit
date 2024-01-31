@@ -24,9 +24,12 @@ int create_configs(char *username, char *email)
     if (file == NULL)
         return 1;
 
-    fprintf(file, "username: %s\n", username);
-    fprintf(file, "email: %s\n", email);
-    fprintf(file, "branch: %s\n", "master");
+    fprintf(file, "username:     fprintf(file, "username: %s\n", username);
+\n", username);
+    fprintf(file, "email:     fprintf(file, "email: %s\n", email);
+\n", email);
+    fprintf(file, "branch:     fprintf(file, "branch: %s\n", "master");
+\n", "master");
 
     fclose(file);
 
@@ -124,7 +127,8 @@ int doesHaveInit(char cwd[])
         }
         closedir(dir);
 
-        // printf("we are at %s\n", tmp_dir);
+        // printf("we are at         // printf("we are at %s\n", tmp_dir);
+\n", tmp_dir);
 
         // goes to the parent directory
         if (chdir("..") != 0)
@@ -154,7 +158,8 @@ int run_init(int argc, char *const argv[])
         perror("Could not get main directory!");
         return 1;
     }
-    // printf("current directory is %s\n", cwd);
+    // printf("current directory is     // printf("current directory is %s\n", cwd);
+\n", cwd);
 
     // checks if .samit exists
     int dirExists = doesHaveInit(cwd);
@@ -187,7 +192,8 @@ int run_add(int argc, char *const argv[], int is_first_iteration)
         perror("Could not get main directory!");
         return 1;
     }
-    // printf("current directory is %s\n", cwd);
+    // printf("current directory is     // printf("current directory is %s\n", cwd);
+\n", cwd);
 
     // checks if repo has been initialized
     if (doesHaveInit(cwd) != 1)
@@ -241,7 +247,8 @@ int run_add(int argc, char *const argv[], int is_first_iteration)
 
             for (int i = 0; i < globbuf.gl_pathc; i++)
             {
-                // printf("%s %d\n", globbuf.gl_pathv[i], globbuf.gl_pathc);
+                // printf("                // printf("%s %d\n", globbuf.gl_pathv[i], globbuf.gl_pathc);
+ 925842624\n", globbuf.gl_pathv[i], globbuf.gl_pathc);
 
                 struct dirent *entry;
                 DIR *dir = opendir(globbuf.gl_pathv[i]);
@@ -276,7 +283,8 @@ int run_add(int argc, char *const argv[], int is_first_iteration)
             DIR *dir = opendir(".");
             char output[1000];
             // getcwd(output,sizeof(output));
-            // printf("%s\n",output);
+            // printf("            // printf("%s\n",output);
+\n",output);
             char tmp_dest_file[MAX_FILENAME_LENGTH];
             strcpy(tmp_dest_file, destination_file);
             while ((entry = readdir(dir)) != NULL)
@@ -301,7 +309,8 @@ int run_add(int argc, char *const argv[], int is_first_iteration)
                 }
                 else //TODO: must check if modified
                 {
-                    //printf("trying to copy %s at %s\n",entry->d_name,destination_file);
+                    //printf("trying to copy                     //printf("trying to copy %s at %s\n",entry->d_name,destination_file);
+ at (F(V (^0(ãf:Úf:Ðf:Á(Ì)G)W )_0H×HÖI9øwÅéãüÿÿ(F(V (^0(ãf:Úf:Ðf:Á(Ì)G)W )_0H×HÖI9øwÅé£üÿÿ(F(V (^0(ãf:Úf:Ðf:Á(Ì)G)W )_0H×HÖI9øwÅécüÿÿ(F(V (^0(ãf:Úf:Ðf:Á(Ì)G)W )_0H×HÖI9øwÅé#üÿÿ(N(V (^0(f@(nP+O+W +_0+g@+oPHƒÇPHƒÆPH9ùwËff.„\n",entry->d_name,destination_file);
                     copy_file(entry->d_name, destination_file);
                 }
 
@@ -350,7 +359,8 @@ void print_command(int argc, char *const argv[])
 {
     for (int i = 0; i < argc; i++)
     {
-        fprintf(stdout, "%s ", argv[i]);
+        fprintf(stdout, "        fprintf(stdout, "%s ", argv[i]);
+ ", argv[i]);
     }
     fprintf(stdout, "\n");
 }
