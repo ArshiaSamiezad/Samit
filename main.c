@@ -219,14 +219,16 @@ int run_add(int argc, char *argv[], int is_first_iteration)
                 glob_t globbuf;
                 if (glob(argv[i], 0, NULL, &globbuf) != 0)
                 {
-                    perror("No match.\n");
+                    perror("No match.");
                     return 1;
                 }
 
                 for (int i = 0; i < globbuf.gl_pathc; i++)
                 {
-                    // printf("%s %d\n", globbuf.gl_pathv[i], globbuf.gl_pathc);
 
+                    // printf("%s %d\n", globbuf.gl_pathv[i], globbuf.gl_pathc);
+                    if (strcmp(".", globbuf.gl_pathv[i]) == 0 || strcmp(".samit", globbuf.gl_pathv[i]) == 0 || strcmp("..", globbuf.gl_pathv[i]) == 0 || strcmp(".git", globbuf.gl_pathv[i]) == 0)
+                        continue;
                     struct dirent *entry;
                     DIR *dir = opendir(globbuf.gl_pathv[i]);
                     // creates destination file directory
@@ -239,7 +241,7 @@ int run_add(int argc, char *argv[], int is_first_iteration)
                     {
                         copy_file(globbuf.gl_pathv[i], destination_file);
                     }
-                    else
+                    else if (dir != NULL)
                     {
                         // makes a new directory in destination, switches there and run_adds
                         mkdir(destination_file, 0755);
@@ -263,7 +265,7 @@ int run_add(int argc, char *argv[], int is_first_iteration)
                 while ((entry = readdir(dir)) != NULL)
                 {
                     // skips these files
-                    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
+                    if (strcmp(entry->d_name, ".git") == 0 || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
                     {
                         continue;
                     }
@@ -317,7 +319,7 @@ int run_add(int argc, char *argv[], int is_first_iteration)
         while ((entry = readdir(dir)) != NULL)
         {
             // skips these files
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
+            if (strcmp(entry->d_name, ".git") == 0 || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
             {
                 continue;
             }
@@ -337,17 +339,20 @@ int run_add(int argc, char *argv[], int is_first_iteration)
             }
 
             // checks if file is modified/not made
-            if (compare_file(entry->d_name, destination_file) == 2)
-            {
-                printf("    %s is modified\n", entry->d_name);
-            }
-            if (compare_file(entry->d_name, destination_file) == 0)
-            {
-                printf("    %s is unmodified\n", entry->d_name);
-            }
             else
             {
-                printf("    %s is untracked\n", entry->d_name);
+                if (compare_file(entry->d_name, destination_file) == 2)
+                {
+                    printf("    %s is staged but modified\n", entry->d_name);
+                }
+                if (compare_file(entry->d_name, destination_file) == 0)
+                {
+                    printf("    %s is staged\n", entry->d_name);
+                }
+                else
+                {
+                    printf("    %s is untracked\n", entry->d_name);
+                }
             }
 
             strcpy(destination_file, tmp_dest_file);
@@ -372,7 +377,8 @@ int run_add(int argc, char *argv[], int is_first_iteration)
             for (int i = 0; i < globbuf.gl_pathc; i++)
             {
                 // printf("%s %d\n", globbuf.gl_pathv[i], globbuf.gl_pathc);
-
+                if (strcmp(".git", globbuf.gl_pathv[i]) == 0 || strcmp(".samit", globbuf.gl_pathv[i]) == 0 || strcmp("..", globbuf.gl_pathv[i]) == 0)
+                    continue;
                 struct dirent *entry;
                 DIR *dir = opendir(globbuf.gl_pathv[i]);
                 // creates destination file directory
@@ -385,7 +391,7 @@ int run_add(int argc, char *argv[], int is_first_iteration)
                 {
                     copy_file(globbuf.gl_pathv[i], destination_file);
                 }
-                else
+                else if (dir != NULL)
                 {
                     // makes a new directory in destination, switches there and run_adds
                     mkdir(destination_file, 0755);
@@ -409,7 +415,7 @@ int run_add(int argc, char *argv[], int is_first_iteration)
             while ((entry = readdir(dir)) != NULL)
             {
                 // skips these files
-                if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
+                if (strcmp(entry->d_name, ".git") == 0 || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
                 {
                     continue;
                 }
@@ -451,6 +457,7 @@ int copy_file(char *src_path, char *dest_path)
     FILE *dest_file = fopen(dest_path, "wb");
     if (dest_file == NULL)
     {
+        fclose(src_file);
         perror("Could not open destination file.");
         return 1;
     }
@@ -477,28 +484,51 @@ int copy_file(char *src_path, char *dest_path)
 
 int compare_file(char *first_file, char *second_file)
 {
-    FILE *first = fopen(first_file, "r");
+    FILE *first = fopen(first_file, "rb");
     if (first == NULL)
     {
         return 1;
     }
-    FILE *second = fopen(second_file, "r");
+    FILE *second = fopen(second_file, "rb");
     if (second == NULL)
     {
+        fclose(first);
         return 1;
     }
 
-    char line1[MAX_LINE_LENGTH];
-    char line2[MAX_LINE_LENGTH];
-    while (fgets(line1, MAX_LINE_LENGTH, first))
+    // 0 is not same, 1 is same
+    int status = 1;
+
+    while (1)
     {
-        fgets(line2, MAX_LINE_LENGTH, second);
-        if (strcmp(line1, line2))
+        char first_file_byte = fgetc(first);
+        char seocnd_file_byte = fgetc(second);
+
+        if (feof(first) || feof(second))
         {
-            return 2;
+            if (!feof(first) || !feof(second))
+            {
+                status = 0;
+                break;
+            }
+            break;
+        }
+
+        if (first_file_byte != seocnd_file_byte)
+        {
+            status = 0;
+            break;
         }
     }
-    return 0;
+
+    if (status == 0)
+    {
+        return 2;
+    }
+    if (status == 2)
+    {
+        return 0;
+    }
 }
 
 // testing command
