@@ -219,6 +219,83 @@ int run_add(int argc, char *const argv[], int is_first_iteration)
         }
         for (int i = 3; i < argc; i++)
         {
+            if (is_first_iteration)
+            {
+                glob_t globbuf;
+                if (glob(argv[i], 0, NULL, &globbuf) != 0)
+                {
+                    perror("No match.\n");
+                    return 1;
+                }
+
+                for (int i = 0; i < globbuf.gl_pathc; i++)
+                {
+                    // printf("                    // printf("%s %d\n", globbuf.gl_pathv[i], globbuf.gl_pathc);
+ 2140225216\n", globbuf.gl_pathv[i], globbuf.gl_pathc);
+
+                    struct dirent *entry;
+                    DIR *dir = opendir(globbuf.gl_pathv[i]);
+                    // creates destination file directory
+                    strcpy(destination_file, main_dir);
+                    strcat(destination_file, "/.samit/staging/");
+                    strcat(destination_file, globbuf.gl_pathv[i]);
+
+                    // checks if dir is valid and file is modified/not made
+                    if (dir == NULL && compare_file(destination_file, globbuf.gl_pathv[i]) != 0)
+                    {
+                        copy_file(globbuf.gl_pathv[i], destination_file);
+                    }
+                    else
+                    {
+                        // makes a new directory in destination, switches there and run_adds
+                        mkdir(destination_file, 0755);
+                        chdir(globbuf.gl_pathv[i]);
+                        run_add(argc, argv, 0);
+                        chdir("..");
+                    }
+
+                    closedir(dir);
+                }
+                globfree(&globbuf);
+            }
+            else
+            {
+                struct dirent *entry;
+                DIR *dir = opendir(".");
+                char output[1000];
+                char tmp_dest_file[MAX_FILENAME_LENGTH];
+                strcpy(tmp_dest_file, destination_file);
+
+                while ((entry = readdir(dir)) != NULL)
+                {
+                    // skips these files
+                    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
+                    {
+                        continue;
+                    }
+
+                    // creates destination file directory
+                    strcat(destination_file, "/");
+                    strcat(destination_file, entry->d_name);
+                    if (entry->d_type == DT_DIR)
+                    {
+                        // makes a new directory in destination, switches there and run_adds
+                        mkdir(destination_file, 0755);
+                        chdir(entry->d_name);
+                        run_add(argc, argv, 0);
+                        chdir("..");
+                    }
+
+                    // checks if file is modified/not made
+                    else if (compare_file(destination_file, entry->d_name) != 0)
+                    {
+                        copy_file(entry->d_name, destination_file);
+                    }
+
+                    strcpy(destination_file, tmp_dest_file);
+                }
+                closedir(dir);
+            }
         }
     }
 
@@ -235,7 +312,7 @@ int run_add(int argc, char *const argv[], int is_first_iteration)
     // single file add
     else
     {
-        
+
         if (is_first_iteration)
         {
             glob_t globbuf;
@@ -248,7 +325,7 @@ int run_add(int argc, char *const argv[], int is_first_iteration)
             for (int i = 0; i < globbuf.gl_pathc; i++)
             {
                 // printf("                // printf("%s %d\n", globbuf.gl_pathv[i], globbuf.gl_pathc);
- 925842624\n", globbuf.gl_pathv[i], globbuf.gl_pathc);
+ 2140224704\n", globbuf.gl_pathv[i], globbuf.gl_pathc);
 
                 struct dirent *entry;
                 DIR *dir = opendir(globbuf.gl_pathv[i]);
@@ -256,17 +333,15 @@ int run_add(int argc, char *const argv[], int is_first_iteration)
                 strcpy(destination_file, main_dir);
                 strcat(destination_file, "/.samit/staging/");
                 strcat(destination_file, globbuf.gl_pathv[i]);
-                if (dir == NULL) //TODO: must check if modified
+
+                // checks if dir is valid and file is modified/not made
+                if (dir == NULL && compare_file(destination_file, globbuf.gl_pathv[i]) != 0)
                 {
                     copy_file(globbuf.gl_pathv[i], destination_file);
                 }
                 else
                 {
-                    // if (mkdir(destination_file, 0755) != 0)
-                    // {
-                    //     printf("couldnt make file\n");
-                    //     return 1;
-                    // }
+                    // makes a new directory in destination, switches there and run_adds
                     mkdir(destination_file, 0755);
                     chdir(globbuf.gl_pathv[i]);
                     run_add(argc, argv, 0);
@@ -282,14 +357,14 @@ int run_add(int argc, char *const argv[], int is_first_iteration)
             struct dirent *entry;
             DIR *dir = opendir(".");
             char output[1000];
-            // getcwd(output,sizeof(output));
-            // printf("            // printf("%s\n",output);
-\n",output);
             char tmp_dest_file[MAX_FILENAME_LENGTH];
             strcpy(tmp_dest_file, destination_file);
+
             while ((entry = readdir(dir)) != NULL)
             {
-                if(strcmp(entry->d_name,".") == 0 || strcmp(entry->d_name,"..")==0 || strcmp(entry->d_name,".samit")==0){
+                // skips these files
+                if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
+                {
                     continue;
                 }
 
@@ -298,19 +373,16 @@ int run_add(int argc, char *const argv[], int is_first_iteration)
                 strcat(destination_file, entry->d_name);
                 if (entry->d_type == DT_DIR)
                 {
-                    // if (mkdir(destination_file, 0755) != 0)
-                    // {
-                    //     return 1;
-                    // }
+                    // makes a new directory in destination, switches there and run_adds
                     mkdir(destination_file, 0755);
                     chdir(entry->d_name);
                     run_add(argc, argv, 0);
                     chdir("..");
                 }
-                else //TODO: must check if modified
+
+                // checks if file is modified/not made
+                else if (compare_file(destination_file, entry->d_name) != 0)
                 {
-                    //printf("trying to copy                     //printf("trying to copy %s at %s\n",entry->d_name,destination_file);
- at (F(V (^0(ãf:Úf:Ðf:Á(Ì)G)W )_0H×HÖI9øwÅéãüÿÿ(F(V (^0(ãf:Úf:Ðf:Á(Ì)G)W )_0H×HÖI9øwÅé£üÿÿ(F(V (^0(ãf:Úf:Ðf:Á(Ì)G)W )_0H×HÖI9øwÅécüÿÿ(F(V (^0(ãf:Úf:Ðf:Á(Ì)G)W )_0H×HÖI9øwÅé#üÿÿ(N(V (^0(f@(nP+O+W +_0+g@+oPHƒÇPHƒÆPH9ùwËff.„\n",entry->d_name,destination_file);
                     copy_file(entry->d_name, destination_file);
                 }
 
@@ -349,8 +421,30 @@ int copy_file(char *src_path, char *dest_path)
     return 0;
 }
 
-int compare_file(char *first_file, char *second_file){
+int compare_file(char *first_file, char *second_file)
+{
+    FILE *first = fopen(first_file, "r");
+    if (first == NULL)
+    {
+        return 1;
+    }
+    FILE *second = fopen(second_file, "r");
+    if (second == NULL)
+    {
+        return 1;
+    }
 
+    char line1[MAX_LINE_LENGTH];
+    char line2[MAX_LINE_LENGTH];
+    while (fgets(line1, MAX_LINE_LENGTH, first))
+    {
+        fgets(line2, MAX_LINE_LENGTH, second);
+        if (strcmp(line1, line2))
+        {
+            return 2;
+        }
+    }
+    return 0;
 }
 
 // testing command
