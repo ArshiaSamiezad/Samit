@@ -17,6 +17,7 @@ char staging_dir[MAX_FILENAME_LENGTH];
 char commits_dir[MAX_FILENAME_LENGTH];
 char branches_dir[MAX_FILENAME_LENGTH];
 char destination_file[MAX_FILENAME_LENGTH];
+int add_n_depth;
 
 int create_configs(char *username, char *email)
 {
@@ -178,7 +179,7 @@ int run_init(int argc, char *const argv[])
     return 0;
 }
 
-int run_add(int argc, char *const argv[], int is_first_iteration)
+int run_add(int argc, char *argv[], int is_first_iteration)
 {
     // finds current directory
     char cwd[MAX_FILENAME_LENGTH];
@@ -300,6 +301,54 @@ int run_add(int argc, char *const argv[], int is_first_iteration)
             perror("Depth level isnt mentioned!");
             return 1;
         }
+
+        if(add_n_depth == -1){
+            return 0;
+        }
+        add_n_depth--;
+
+        struct dirent *entry;
+        DIR *dir = opendir(".");
+        char output[1000];
+        char tmp_dest_file[MAX_FILENAME_LENGTH];
+        strcpy(tmp_dest_file, destination_file);
+
+        while ((entry = readdir(dir)) != NULL)
+        {
+            // skips these files
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
+            {
+                continue;
+            }
+
+            // creates destination file directory
+            strcat(destination_file, "/");
+            strcat(destination_file, entry->d_name);
+            if (entry->d_type == DT_DIR)
+            {
+                printf("Entering directory %s{\n",entry->d_name);
+                chdir(entry->d_name);
+                run_add(argc, argv, 0);
+                chdir("..");
+                printf("}\n");
+            }
+
+            // checks if file is modified/not mad
+                if(compare_file(entry->d_name,destination_file) == 2){
+                    printf("    %s is modified\n",entry->d_name);
+                }
+                if(compare_file(entry->d_name,destination_file) == 0){
+                    printf("    %s is unmodified\n",entry->d_name);
+                }
+                else{
+                    printf("    %s is untracked\n",entry->d_name);
+                }
+
+
+            strcpy(destination_file, tmp_dest_file);
+        }
+        closedir(dir);
+        return 0;
     }
 
     // single file add
@@ -468,6 +517,10 @@ int main(int argc, char *argv[])
     }
     else if (strcmp(argv[1], "add") == 0)
     {
+        if (strcmp(argv[2], "-n") == 0)
+        {
+            add_n_depth = strtol(argv[3], NULL, 10);
+        }
         run_add(argc, argv, 1);
     }
 
