@@ -179,7 +179,7 @@ int run_init(int argc, char *const argv[])
     return 0;
 }
 
-int run_add(int argc, char *argv[], int is_first_iteration)
+int run_add(int argc, char *argv[], int level)
 {
     // finds current directory
     char cwd[MAX_FILENAME_LENGTH];
@@ -214,7 +214,7 @@ int run_add(int argc, char *argv[], int is_first_iteration)
         }
         for (int i = 3; i < argc; i++)
         {
-            if (is_first_iteration)
+            if (level == 0)
             {
                 glob_t globbuf;
                 if (glob(argv[i], 0, NULL, &globbuf) != 0)
@@ -365,7 +365,7 @@ int run_add(int argc, char *argv[], int is_first_iteration)
     else
     {
 
-        if (is_first_iteration)
+        if (level==0)
         {
             glob_t globbuf;
             if (glob(argv[2], 0, NULL, &globbuf) != 0)
@@ -564,7 +564,7 @@ int main(int argc, char *argv[])
         {
             add_n_depth = strtol(argv[3], NULL, 10);
         }
-        run_add(argc, argv, 1);
+        run_add(argc, argv, 0);
     }
 
     return 0;
