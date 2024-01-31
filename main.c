@@ -302,7 +302,8 @@ int run_add(int argc, char *argv[], int is_first_iteration)
             return 1;
         }
 
-        if(add_n_depth == -1){
+        if (add_n_depth == -1)
+        {
             return 0;
         }
         add_n_depth--;
@@ -322,28 +323,32 @@ int run_add(int argc, char *argv[], int is_first_iteration)
             }
 
             // creates destination file directory
+            strcpy(destination_file, main_dir);
+            strcat(destination_file, "/.samit/staging/");
             strcat(destination_file, "/");
             strcat(destination_file, entry->d_name);
             if (entry->d_type == DT_DIR)
             {
-                printf("Entering directory %s{\n",entry->d_name);
+                printf("Entering directory %s{\n", entry->d_name);
                 chdir(entry->d_name);
                 run_add(argc, argv, 0);
                 chdir("..");
                 printf("}\n");
             }
 
-            // checks if file is modified/not mad
-                if(compare_file(entry->d_name,destination_file) == 2){
-                    printf("    %s is modified\n",entry->d_name);
-                }
-                if(compare_file(entry->d_name,destination_file) == 0){
-                    printf("    %s is unmodified\n",entry->d_name);
-                }
-                else{
-                    printf("    %s is untracked\n",entry->d_name);
-                }
-
+            // checks if file is modified/not made
+            if (compare_file(entry->d_name, destination_file) == 2)
+            {
+                printf("    %s is modified\n", entry->d_name);
+            }
+            if (compare_file(entry->d_name, destination_file) == 0)
+            {
+                printf("    %s is unmodified\n", entry->d_name);
+            }
+            else
+            {
+                printf("    %s is untracked\n", entry->d_name);
+            }
 
             strcpy(destination_file, tmp_dest_file);
         }
@@ -437,23 +442,31 @@ int run_add(int argc, char *argv[], int is_first_iteration)
 
 int copy_file(char *src_path, char *dest_path)
 {
-    FILE *src_file = fopen(src_path, "r");
+    FILE *src_file = fopen(src_path, "rb");
     if (src_file == NULL)
     {
         perror("Could not open source file.");
         return 1;
     }
-    FILE *dest_file = fopen(dest_path, "w");
+    FILE *dest_file = fopen(dest_path, "wb");
     if (dest_file == NULL)
     {
         perror("Could not open destination file.");
         return 1;
     }
+    const size_t bufferSize = 10240;
+    char buffer[bufferSize];
+    size_t bytesRead;
 
-    char line[MAX_LINE_LENGTH];
-    while (fgets(line, MAX_LINE_LENGTH, src_file))
+    while ((bytesRead = fread(buffer, 1, bufferSize, src_file)) > 0)
     {
-        fprintf(dest_file, line);
+        if (fwrite(buffer, 1, bytesRead, dest_file) != bytesRead)
+        {
+            perror("Error writing to destination file");
+            fclose(src_file);
+            fclose(dest_file);
+            return 1;
+        }
     }
 
     fclose(src_file);
