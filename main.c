@@ -246,7 +246,9 @@ int run_add(int argc, char *argv[], int level)
                         // makes a new directory in destination, switches there and run_adds
                         mkdir(destination_file, 0755);
                         chdir(globbuf.gl_pathv[i]);
-                        run_add(argc, argv, 0);
+                        level++;
+                        run_add(argc, argv, level);
+                        level--;
                         chdir("..");
                     }
 
@@ -278,7 +280,9 @@ int run_add(int argc, char *argv[], int level)
                         // makes a new directory in destination, switches there and run_adds
                         mkdir(destination_file, 0755);
                         chdir(entry->d_name);
-                        run_add(argc, argv, 0);
+                        level++;
+                        run_add(argc, argv, level);
+                        level--;
                         chdir("..");
                     }
 
@@ -304,11 +308,16 @@ int run_add(int argc, char *argv[], int level)
             return 1;
         }
 
-        if (add_n_depth == -1)
+        if (level > add_n_depth)
         {
             return 0;
         }
-        add_n_depth--;
+        if (level == 0)
+        {
+            // creates destination file directory
+            strcpy(destination_file, main_dir);
+            strcat(destination_file, "/.samit/staging");
+        }
 
         struct dirent *entry;
         DIR *dir = opendir(".");
@@ -325,33 +334,45 @@ int run_add(int argc, char *argv[], int level)
             }
 
             // creates destination file directory
-            strcpy(destination_file, main_dir);
-            strcat(destination_file, "/.samit/staging/");
             strcat(destination_file, "/");
             strcat(destination_file, entry->d_name);
             if (entry->d_type == DT_DIR)
             {
+                for (int i = 0; i < level; i++)
+                {
+                    printf("    ");
+                }
                 printf("Entering directory %s{\n", entry->d_name);
                 chdir(entry->d_name);
-                run_add(argc, argv, 0);
+                level++;
+                run_add(argc, argv, level);
+                level--;
                 chdir("..");
+                for (int i = 0; i < level; i++)
+                {
+                    printf("    ");
+                }
                 printf("}\n");
             }
 
             // checks if file is modified/not made
             else
             {
+                for (int i = 0; i < level; i++)
+                {
+                    printf("    ");
+                }
                 if (compare_file(entry->d_name, destination_file) == 2)
                 {
-                    printf("    %s is staged but modified\n", entry->d_name);
+                    printf("%s is staged but modified\n", entry->d_name);
                 }
-                if (compare_file(entry->d_name, destination_file) == 0)
+                else if (compare_file(entry->d_name, destination_file) == 0)
                 {
-                    printf("    %s is staged\n", entry->d_name);
+                    printf("%s is staged\n", entry->d_name);
                 }
                 else
                 {
-                    printf("    %s is untracked\n", entry->d_name);
+                    printf("%s is untracked\n", entry->d_name);
                 }
             }
 
@@ -365,7 +386,7 @@ int run_add(int argc, char *argv[], int level)
     else
     {
 
-        if (level==0)
+        if (level == 0)
         {
             glob_t globbuf;
             if (glob(argv[2], 0, NULL, &globbuf) != 0)
@@ -396,7 +417,9 @@ int run_add(int argc, char *argv[], int level)
                     // makes a new directory in destination, switches there and run_adds
                     mkdir(destination_file, 0755);
                     chdir(globbuf.gl_pathv[i]);
-                    run_add(argc, argv, 0);
+                    level++;
+                    run_add(argc, argv, level);
+                    level--;
                     chdir("..");
                 }
 
@@ -428,7 +451,9 @@ int run_add(int argc, char *argv[], int level)
                     // makes a new directory in destination, switches there and run_adds
                     mkdir(destination_file, 0755);
                     chdir(entry->d_name);
-                    run_add(argc, argv, 0);
+                    level++;
+                    run_add(argc, argv, level);
+                    level--;
                     chdir("..");
                 }
 
@@ -502,19 +527,20 @@ int compare_file(char *first_file, char *second_file)
     while (1)
     {
         char first_file_byte = fgetc(first);
-        char seocnd_file_byte = fgetc(second);
+        char second_file_byte = fgetc(second);
 
         if (feof(first) || feof(second))
         {
             if (!feof(first) || !feof(second))
             {
+                printf("%c and %c\n", first_file_byte, second_file_byte);
                 status = 0;
                 break;
             }
             break;
         }
 
-        if (first_file_byte != seocnd_file_byte)
+        if (first_file_byte != second_file_byte)
         {
             status = 0;
             break;
@@ -525,7 +551,7 @@ int compare_file(char *first_file, char *second_file)
     {
         return 2;
     }
-    if (status == 2)
+    if (status == 1)
     {
         return 0;
     }
