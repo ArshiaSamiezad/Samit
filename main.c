@@ -16,7 +16,10 @@ char main_dir[MAX_FILENAME_LENGTH];
 char staging_dir[MAX_FILENAME_LENGTH];
 char commits_dir[MAX_FILENAME_LENGTH];
 char branches_dir[MAX_FILENAME_LENGTH];
+
 char destination_file[MAX_FILENAME_LENGTH];
+char destination_file_stage[MAX_FILENAME_LENGTH]; // for status reverse checking
+
 int add_n_depth;
 
 int create_configs(char *username, char *email)
@@ -200,7 +203,7 @@ int run_add(int argc, char *argv[], int level)
     // checks if it is a valid command
     if (argc < 3)
     {
-        perror("Please enter a valid command");
+        perror("Please enter a valid add command");
         return 1;
     }
 
@@ -362,7 +365,7 @@ int run_add(int argc, char *argv[], int level)
                 {
                     printf("    ");
                 }
-                if (compare_file(entry->d_name, destination_file) == 2)
+                if (compare_file(entry->d_name, destination_file) == 1)
                 {
                     printf("%s is staged but modified\n", entry->d_name);
                 }
@@ -476,7 +479,7 @@ int copy_file(char *src_path, char *dest_path)
     FILE *src_file = fopen(src_path, "rb");
     if (src_file == NULL)
     {
-        printf("source files is %s\n",src_path);
+        printf("source files is %s\n", src_path);
         perror("Could not open source file.");
         return 1;
     }
@@ -514,13 +517,13 @@ int compare_file(char *first_file, char *second_file)
     FILE *first = fopen(first_file, "rb");
     if (first == NULL)
     {
-        return 1;
+        return 3; // 1
     }
     FILE *second = fopen(second_file, "rb");
     if (second == NULL)
     {
         fclose(first);
-        return 1;
+        return 2; // 1
     }
 
     // 0 is not same, 1 is same
@@ -535,7 +538,7 @@ int compare_file(char *first_file, char *second_file)
         {
             if (!feof(first) || !feof(second))
             {
-                printf("%c and %c\n", first_file_byte, second_file_byte);
+                //printf("%c and %c\n", first_file_byte, second_file_byte);
                 status = 0;
                 break;
             }
@@ -548,10 +551,12 @@ int compare_file(char *first_file, char *second_file)
             break;
         }
     }
+    fclose(first);
+    fclose(second);
 
     if (status == 0)
     {
-        return 2;
+        return 1; // 2
     }
     if (status == 1)
     {
@@ -598,7 +603,7 @@ int run_reset(int argc, char *argv[], int level)
 
                 for (int i = 0; i < globbuf.gl_pathc; i++)
                 {
-                    if (strcmp(".", globbuf.gl_pathv[i]) == 0 || strcmp(".samit", globbuf.gl_pathv[i]) == 0 || strcmp("..", globbuf.gl_pathv[i]) == 0 || strcmp(".git", globbuf.gl_pathv[i]) == 0)
+                    if (strcmp(".samit", globbuf.gl_pathv[i]) == 0 || strcmp("..", globbuf.gl_pathv[i]) == 0 || strcmp(".git", globbuf.gl_pathv[i]) == 0)
                         continue;
                     struct dirent *entry;
                     DIR *dir = opendir(globbuf.gl_pathv[i]);
@@ -765,8 +770,193 @@ int run_reset(int argc, char *argv[], int level)
     }
 }
 
-// testing command
+// helping function for searching destination file
+int run_status_destination(int argc, char *argv[], int level, int is_first)
+{
+    char cwd_stage[MAX_FILENAME_LENGTH];
+    if (is_first)
+    {
+        // finds current directory
 
+        if (getcwd(cwd_stage, sizeof(cwd_stage)) == NULL)
+        {
+            perror("Could not get main directory!");
+            return 1;
+        }
+    }
+    // printf("cwd stage is %s\n",cwd_stage);
+    // printf("dest stage is %s\n",destination_file_stage);
+
+    struct dirent *entry_stage;
+    DIR *dir_stage = opendir(destination_file_stage);
+
+    if (dir_stage == NULL)
+    {
+        return 1;
+    }
+    char tmp_dest_file_stage[MAX_FILENAME_LENGTH];
+
+    strcpy(tmp_dest_file_stage, destination_file_stage);
+
+    while ((entry_stage = readdir(dir_stage)) != NULL)
+    {
+
+        // skips these files
+        if (strcmp(entry_stage->d_name, ".git") == 0 || strcmp(entry_stage->d_name, ".") == 0 || strcmp(entry_stage->d_name, "..") == 0 || strcmp(entry_stage->d_name, ".samit") == 0)
+        {
+            continue;
+        }
+
+        strcat(destination_file_stage, "/");
+        strcat(destination_file_stage, entry_stage->d_name);
+
+        // checks if file is modified/not made
+        if (entry_stage->d_type != DT_DIR)
+        {
+
+            if (compare_file(destination_file_stage, entry_stage->d_name) == 2)
+            {
+                for (int i = 0; i < level; i++)
+                {
+                    printf("    ");
+                }
+                printf("%s is +D\n", entry_stage->d_name);
+            }
+        }
+        else
+        {
+            strcat(cwd_stage, "/");
+            strcat(cwd_stage, entry_stage->d_name);
+            DIR *dir_check = opendir(cwd_stage);
+            if (dir_check == NULL)
+            {
+                //is_first = 0;
+                for (int i = 0; i < level; i++)
+                {
+                    printf("    ");
+                }
+                printf("[DIRECTORY] %s +D\n", entry_stage->d_name);
+                //level++;
+                //run_status_destination(argc,argv,level,is_first);
+                closedir(dir_check);
+            }
+
+            else
+                closedir(dir_check);
+        }
+
+        strcpy(destination_file_stage, tmp_dest_file_stage);
+    }
+    closedir(dir_stage);
+    return 0;
+}
+
+// status
+int run_status(int argc, char *argv[], int level)
+{
+    // finds current directory
+    char cwd[MAX_FILENAME_LENGTH];
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        perror("Could not get main directory!");
+        return 1;
+    }
+
+    // checks if repo has been initialized
+    if (doesHaveInit(cwd) != 1)
+    {
+        perror("Repo hasn't initialized!");
+        return 1;
+    }
+    if (level == 0)
+    {
+        // creates destination file directory
+        strcpy(destination_file, main_dir);
+        strcpy(destination_file_stage, main_dir);
+        strcat(destination_file, "/.samit/staging");
+        strcat(destination_file_stage, "/.samit/staging");
+    }
+
+    struct dirent *entry;
+    DIR *dir = opendir(".");
+    char output[1000];
+    char tmp_dest_file[MAX_FILENAME_LENGTH];
+
+    strcpy(tmp_dest_file, destination_file);
+
+    while ((entry = readdir(dir)) != NULL)
+    {
+        // skips these files
+        if (strcmp(entry->d_name, ".git") == 0 || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
+        {
+            continue;
+        }
+
+        // creates destination file directory
+        strcat(destination_file, "/");
+        strcat(destination_file, entry->d_name);
+
+        if (entry->d_type == DT_DIR)
+        {
+            for (int i = 0; i < level; i++)
+            {
+                printf("    ");
+            }
+            printf("Entering directory %s{\n", entry->d_name);
+            strcat(destination_file_stage, "/");
+            strcat(destination_file_stage, entry->d_name);
+            chdir(entry->d_name);
+            level++;
+            run_status(argc, argv, level);
+
+            level--;
+            chdir("..");
+            for (int i = 0; i < level; i++)
+            {
+                printf("    ");
+            }
+            printf("}\n");
+        }
+
+        // checks if file is modified/not made
+        else
+        {
+            for (int i = 0; i < level; i++)
+            {
+                printf("    ");
+            }
+            if (compare_file(destination_file, entry->d_name) == 3)
+            {
+                printf("%s -", entry->d_name);
+                if (compare_file(entry->d_name, destination_file) == 3)
+                {
+                    printf("D\n");
+                }
+                else
+                {
+                    printf("A\n");
+                }
+            }
+
+            else if (compare_file(destination_file, entry->d_name) == 1)
+            {
+                printf("%s +M\n", entry->d_name);
+            }
+            else if (compare_file(destination_file, entry->d_name) == 0)
+            {
+                printf("%s is +A\n", entry->d_name);
+            }
+        }
+
+        strcpy(destination_file, tmp_dest_file);
+        strcpy(destination_file_stage, tmp_dest_file);
+    }
+    run_status_destination(argc, argv, level, 1);
+    closedir(dir);
+    return 0;
+}
+
+// testing command
 void print_command(int argc, char *const argv[])
 {
     for (int i = 0; i < argc; i++)
@@ -803,6 +993,15 @@ int main(int argc, char *argv[])
     else if (strcmp(argv[1], "reset") == 0)
     {
         run_reset(argc, argv, 0);
+    }
+    else if (strcmp(argv[1], "status") == 0)
+    {
+        if (argc > 2)
+        {
+            perror("Too much arguements are added!");
+            return 1;
+        }
+        run_status(argc, argv, 0);
     }
 
     return 0;
