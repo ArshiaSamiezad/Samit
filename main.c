@@ -10,12 +10,19 @@
 #include <glob.h>
 
 #define MAX_FILENAME_LENGTH 1000
-#define MAX_LINE_LENGTH 8000
+#define MAX_NAME_LENGTH 1000
 
 char main_dir[MAX_FILENAME_LENGTH];
+char config_global_dir[MAX_FILENAME_LENGTH];
+
 char staging_dir[MAX_FILENAME_LENGTH];
 char commits_dir[MAX_FILENAME_LENGTH];
 char branches_dir[MAX_FILENAME_LENGTH];
+char master_dir[MAX_FILENAME_LENGTH];
+char commits_dir[MAX_FILENAME_LENGTH];
+char shortcuts_dir[MAX_FILENAME_LENGTH];
+char config_dir[MAX_FILENAME_LENGTH];
+char alias_dir[MAX_FILENAME_LENGTH];
 
 char destination_file[MAX_FILENAME_LENGTH];
 char destination_file_stage[MAX_FILENAME_LENGTH]; // for status reverse checking
@@ -24,17 +31,48 @@ int add_n_depth;
 
 int create_configs(char *username, char *email)
 {
-    FILE *file = fopen(".samit/config", "w");
+    chdir(".samit");
+    // config folder
+    if (mkdir("config", 0755) != 0)
+    {
+        return 1;
+    }
+
+    if (getcwd(config_dir, sizeof(config_dir)) == NULL)
+    {
+        perror("Could not write config directory!");
+        return 1;
+    }
+    chdir("config");
+    FILE *file = fopen("username", "w");
+    fprintf(file, "%s", username);
     if (file == NULL)
         return 1;
-
-    fprintf(file, "username: %s\n", username);
-    fprintf(file, "email: %s\n", email);
-    fprintf(file, "branch: %s\n", "master");
-
     fclose(file);
+    file = fopen("email", "w");
+    fprintf(file, "%s", email);
+    if (file == NULL)
+        return 1;
+    fclose(file);
+    file = fopen("branch", "w");
+    fprintf(file, "%s", "master");
+    if (file == NULL)
+        return 1;
+    fclose(file);
+    chdir("..");
 
-    chdir(".samit");
+    // alias folder
+    if (mkdir("alias", 0755) != 0)
+    {
+        return 1;
+    }
+    chdir("alias");
+    if (getcwd(alias_dir, sizeof(alias_dir)) == NULL)
+    {
+        perror("Could not write alias directory!");
+        return 1;
+    }
+    chdir("..");
 
     // staging directory
     if (mkdir("staging", 0755) != 0)
@@ -45,19 +83,6 @@ int create_configs(char *username, char *email)
     if (getcwd(staging_dir, sizeof(staging_dir)) == NULL)
     {
         perror("Could not write staging directory!");
-        return 1;
-    }
-    chdir("..");
-
-    // commits directory
-    if (mkdir("commits", 0755) != 0)
-    {
-        return 1;
-    }
-    chdir("commits");
-    if (getcwd(commits_dir, sizeof(commits_dir)) == NULL)
-    {
-        perror("Could not write commits directory!");
         return 1;
     }
     chdir("..");
@@ -73,6 +98,43 @@ int create_configs(char *username, char *email)
         perror("Could not write branches directory!");
         return 1;
     }
+    if (mkdir("master", 0755) != 0)
+    {
+        return 1;
+    }
+    chdir("master");
+    if (getcwd(master_dir, sizeof(master_dir)) == NULL)
+    {
+        perror("Could not write branches directory!");
+        return 1;
+    }
+
+    // commits directory
+    if (mkdir("commits", 0755) != 0)
+    {
+        return 1;
+    }
+    chdir("commits");
+    if (getcwd(commits_dir, sizeof(commits_dir)) == NULL)
+    {
+        perror("Could not write commits directory!");
+        return 1;
+    }
+    chdir("..");
+    chdir("..");
+    chdir("..");
+
+    // shortcuts directory
+    if (mkdir("shortcuts", 0755) != 0)
+    {
+        return 1;
+    }
+    chdir("shortcuts");
+    if (getcwd(shortcuts_dir, sizeof(shortcuts_dir)) == NULL)
+    {
+        perror("Could not write branches directory!");
+        return 1;
+    }
     chdir("..");
 
     chdir("..");
@@ -80,6 +142,110 @@ int create_configs(char *username, char *email)
     return 0;
 }
 
+// checks if a
+
+// create config global
+int run_config_global(int argc, char *argv[])
+{
+    // finds current directorychar cwd[MAX_FILENAME_LENGTH];
+    char cwd[MAX_FILENAME_LENGTH];
+    char first_cwd[MAX_FILENAME_LENGTH];
+
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        perror("Could not get current directory!");
+        return 1;
+    }
+    strcpy(first_cwd, cwd);
+
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        perror("Could not get current directory!");
+        return 1;
+    }
+    strcpy(first_cwd, cwd);
+
+    chdir(config_global_dir);
+
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        perror("Could not get current directory!");
+        return 1;
+    }
+    // printf("cwd is %s\n", cwd);
+
+    if (strcmp(argv[3], "user.name") == 0)
+    {
+        FILE *file = fopen("username", "w");
+        fprintf(file, "%s", argv[4]);
+        if (file == NULL)
+        {
+            return 1;
+        }
+        fclose(file);
+    }
+
+    else if (strcmp(argv[3], "user.email") == 0)
+    {
+        FILE *file = fopen("email", "w");
+        fprintf(file, "%s", argv[4]);
+        if (file == NULL)
+            return 1;
+        fclose(file);
+    }
+
+    else
+    {
+        perror("Invalid config!\n");
+        return 1;
+    }
+}
+
+int run_config_local(int argc, char *argv[])
+{
+    // finds current directory
+    char cwd[MAX_FILENAME_LENGTH];
+    char first_cwd[MAX_FILENAME_LENGTH];
+
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        perror("Could not get current directory!");
+        return 1;
+    }
+    strcpy(first_cwd, cwd);
+
+    if (doesHaveInit(cwd) != 1)
+        return 1;
+
+    chdir(".samit");
+    chdir("config");
+
+    if (strcmp(argv[2], "user.name") == 0)
+    {
+        FILE *file = fopen("username", "w");
+        fprintf(file, "%s", argv[3]);
+        if (file == NULL)
+        {
+            return 1;
+        }
+        fclose(file);
+    }
+    else if (strcmp(argv[2], "user.email") == 0)
+    {
+        FILE *file = fopen("email", "w");
+        fprintf(file, "%s", argv[3]);
+        if (file == NULL)
+            return 1;
+        fclose(file);
+    }
+    else
+    {
+        perror("Invalid config!\n");
+        return 1;
+    }
+}
+
+// checks if repo is made, and inserts the path in main_dir. 0: not found. 1: found. 2:errors
 int doesHaveInit(char cwd[])
 {
 
@@ -174,8 +340,19 @@ int run_init(int argc, char *const argv[])
         {
             return 1;
         }
-        create_configs("ArshiaSamiezad", "arshiasamiezad@gmail.com");
         strcpy(main_dir, cwd);
+        chdir(config_global_dir);
+        char username[MAX_NAME_LENGTH];
+        char email[MAX_NAME_LENGTH];
+
+        FILE *file = fopen("username", "r");
+        fgets(username, MAX_NAME_LENGTH, file);
+        fclose(file);
+        file = fopen("email", "r");
+        fgets(email, MAX_NAME_LENGTH, file);
+        fclose(file);
+        chdir(main_dir);
+        create_configs(username, email);
     }
     else
         return 1;
@@ -538,7 +715,7 @@ int compare_file(char *first_file, char *second_file)
         {
             if (!feof(first) || !feof(second))
             {
-                //printf("%c and %c\n", first_file_byte, second_file_byte);
+                // printf("%c and %c\n", first_file_byte, second_file_byte);
                 status = 0;
                 break;
             }
@@ -830,14 +1007,14 @@ int run_status_destination(int argc, char *argv[], int level, int is_first)
             DIR *dir_check = opendir(cwd_stage);
             if (dir_check == NULL)
             {
-                //is_first = 0;
+                // is_first = 0;
                 for (int i = 0; i < level; i++)
                 {
                     printf("    ");
                 }
                 printf("[DIRECTORY] %s +D\n", entry_stage->d_name);
-                //level++;
-                //run_status_destination(argc,argv,level,is_first);
+                // level++;
+                // run_status_destination(argc,argv,level,is_first);
                 closedir(dir_check);
             }
 
@@ -956,6 +1133,8 @@ int run_status(int argc, char *argv[], int level)
     return 0;
 }
 
+// commit
+
 // testing command
 void print_command(int argc, char *const argv[])
 {
@@ -968,6 +1147,48 @@ void print_command(int argc, char *const argv[])
 
 int main(int argc, char *argv[])
 {
+    char cwd[MAX_FILENAME_LENGTH];
+    char first_cwd[MAX_FILENAME_LENGTH];
+
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        perror("Could not get current directory!");
+        return 1;
+    }
+    strcpy(first_cwd, cwd);
+
+    chdir("/");
+    strcpy(config_global_dir, "/home/");
+    strcat(config_global_dir, getlogin());
+    strcat(config_global_dir, "/.config");
+    chdir(config_global_dir);
+
+    // checking if config for samit is made
+    DIR *dir;
+    struct dirent *entry;
+    mkdir("samit", 0755);
+    dir = opendir("samit");
+    if (dir == NULL)
+    {
+        return 1;
+    }
+    chdir("samit");
+    strcat(config_global_dir, "/samit");
+    if (access("username", F_OK))
+    {
+        FILE *file = fopen("username", "w");
+        fclose(file);
+    }
+    if (access("email", F_OK))
+    {
+        FILE *file = fopen("email", "w");
+        fclose(file);
+    }
+
+    mkdir("alias", 0755);
+
+    chdir(cwd);
+
     if (argc < 2)
     {
         perror("Please enter a valid command!");
@@ -981,6 +1202,29 @@ int main(int argc, char *argv[])
             return 1;
         }
         run_init(argc, argv);
+    }
+
+    else if (strcmp(argv[1], "config") == 0)
+    {
+        if (argc < 4)
+        {
+            perror("config requires atleast 4 arguements!");
+            return 1;
+        }
+        if (strcmp(argv[2], "-global") == 0)
+        {
+            if (argc < 5)
+            {
+                perror("config global requires atleast 5 arguements!");
+                return 1;
+            }
+
+            run_config_global(argc, argv);
+        }
+        else
+        {
+            run_config_local(argc, argv);
+        }
     }
     else if (strcmp(argv[1], "add") == 0)
     {
