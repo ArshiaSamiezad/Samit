@@ -1333,11 +1333,26 @@ int run_set(int argc, char *argv[])
         return 1;
     }
 
-    FILE *file = fopen(argv[5], "w");
+    FILE *file = fopen(argv[5], "r");
     if (file == NULL)
+    {
+        fclose(file);
+        file = fopen(argv[5], "w");
+        fprintf(file, "%s", argv[3]);
+    }
+    else
+    {
+        perror("Shortcut already exists!");
+        fclose(file);
         return 1;
-    fprintf(file, "%s", argv[3]);
+    }
+
     fclose(file);
+}
+
+// replace
+int run_replace(int argc, char *argv[])
+{
 }
 
 // testing command
@@ -1484,7 +1499,7 @@ int main(int argc, char *argv[])
     {
         if (argc < 6)
         {
-            perror("Too much arguements are added!");
+            perror("Too less arguements are added!");
             return 1;
         }
         if (strcmp(argv[2], "-m") == 0 && strcmp(argv[4], "-s") == 0)
@@ -1493,7 +1508,25 @@ int main(int argc, char *argv[])
         }
         else
         {
-            perror("set command not given correctly");
+            perror("Set command not given correctly!");
+            return 1;
+        }
+    }
+
+    else if (strcmp(argv[1], "replace") == 0)
+    {
+        if (argc < 6)
+        {
+            perror("Too less arguements are added!");
+            return 1;
+        }
+        if (strcmp(argv[2], "-m") == 0 && strcmp(argv[4], "-s") == 0)
+        {
+            run_replace(argc, argv);
+        }
+        else
+        {
+            perror("Replace command not given correctly!");
             return 1;
         }
     }
