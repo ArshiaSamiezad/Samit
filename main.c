@@ -142,10 +142,8 @@ int create_configs(char *username, char *email)
     return 0;
 }
 
-// checks if a
-
-// create config global
-int run_config_global(int argc, char *argv[])
+// create alias global
+int run_alias_global(int argc, char *argv[])
 {
     // finds current directorychar cwd[MAX_FILENAME_LENGTH];
     char cwd[MAX_FILENAME_LENGTH];
@@ -157,6 +155,56 @@ int run_config_global(int argc, char *argv[])
         return 1;
     }
     strcpy(first_cwd, cwd);
+
+    chdir(config_global_dir);
+    chdir("alias");
+
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        perror("Could not get current directory!");
+        return 1;
+    }
+
+    char *inputList[3];
+
+    char temp_argv[MAX_FILENAME_LENGTH];
+    strcpy(temp_argv,argv[3]);
+
+    inputList[0] = strtok(temp_argv, ".");
+    int index = 0;
+    while (inputList[index])
+    {
+        index++;
+        inputList[index] = strtok(NULL, ".");
+    }
+    inputList[index] = '\0';
+
+    FILE *file = fopen(inputList[1], "w");
+    if (file == NULL)
+        return 1;
+    fprintf(file, "%s", argv[4]);
+    fclose(file);
+
+    chdir(first_cwd);
+
+    char argv_local[4][MAX_FILENAME_LENGTH];
+    strcpy(argv_local[0],argv[0]);
+    strcpy(argv_local[1],argv[1]);
+    strcpy(argv_local[2],argv[3]);
+    strcpy(argv_local[3],argv[4]);
+
+    argc--;
+
+    run_alias_local(argc,argv_local);
+    return 0;
+}
+
+// create config global
+int run_config_global(int argc, char *argv[])
+{
+    // finds current directorychar cwd[MAX_FILENAME_LENGTH];
+    char cwd[MAX_FILENAME_LENGTH];
+    char first_cwd[MAX_FILENAME_LENGTH];
 
     if (getcwd(cwd, sizeof(cwd)) == NULL)
     {
@@ -199,8 +247,72 @@ int run_config_global(int argc, char *argv[])
         perror("Invalid config!\n");
         return 1;
     }
+    chdir(first_cwd);
+    strcpy(argv[2],argv[3]);
+    strcpy(argv[3],argv[4]);
+    argc--;
+    run_config_local(argc,argv);
+    return 0;
 }
 
+// alias local
+int run_alias_local(int argc, char *argv[])
+{
+    printf("%s\n",argv[0]);
+
+    char cwd[MAX_FILENAME_LENGTH];
+    char first_cwd[MAX_FILENAME_LENGTH];
+    
+
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        perror("Could not get current directory!");
+        return 1;
+    }
+    strcpy(first_cwd, cwd);
+    
+
+    if (doesHaveInit(cwd) != 1)
+        return 1;
+
+    chdir(".samit");
+    chdir("alias");
+    
+
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        perror("Could not get current directory!");
+        return 1;
+    }
+
+    char *inputList[3];
+
+
+    inputList[0] = strtok(argv[2], ".");
+    int index = 0;
+    while (inputList[index])
+    {
+        index++;
+        inputList[index] = strtok(NULL, ".");
+    }
+    
+    inputList[index] = '\0';
+    
+
+    FILE *file = fopen(inputList[1], "w");
+    if (file == NULL){
+            printf("%s\n",inputList[1]);
+        return 1;
+    }
+    
+
+    fprintf(file, "%s", argv[3]);
+    fclose(file);
+
+    chdir(first_cwd);
+}
+
+// config local
 int run_config_local(int argc, char *argv[])
 {
     // finds current directory
@@ -353,6 +465,34 @@ int run_init(int argc, char *const argv[])
         fclose(file);
         chdir(main_dir);
         create_configs(username, email);
+
+        chdir(".samit/alias");
+        if (getcwd(alias_dir, sizeof(alias_dir)) == NULL)
+        {
+            perror("Could not get main directory!");
+            return 1;
+        }
+
+        chdir(config_global_dir);
+        chdir("alias");
+
+        struct dirent *entry;
+        DIR *dir = opendir(".");
+        if (dir == NULL)
+        {
+            return 1;
+        }
+        char temp_file_name[MAX_FILENAME_LENGTH];
+        strcpy(temp_file_name,alias_dir);
+        while ((entry = readdir(dir)) != NULL)
+        {
+            strcat(alias_dir,"/");
+            strcat(alias_dir,entry->d_name);
+            copy_file(entry->d_name,alias_dir);
+            strcpy(alias_dir,temp_file_name);
+        }
+
+        chdir(main_dir);
     }
     else
         return 1;
@@ -1194,6 +1334,7 @@ int main(int argc, char *argv[])
         perror("Please enter a valid command!");
         return 1;
     }
+
     if (strcmp(argv[1], "init") == 0)
     {
         if (argc > 2)
@@ -1218,14 +1359,28 @@ int main(int argc, char *argv[])
                 perror("config global requires atleast 5 arguements!");
                 return 1;
             }
-
-            run_config_global(argc, argv);
+            if (strncmp(argv[3], "alias.", 6) == 0)
+            {
+                run_alias_global(argc, argv);
+            }
+            else
+            {
+                run_config_global(argc, argv);
+            }
         }
         else
         {
-            run_config_local(argc, argv);
+            if (strncmp(argv[2], "alias.", 6) == 0)
+            {
+                run_alias_local(argc,argv);
+            }
+            else
+            {
+                run_config_local(argc, argv);
+            }
         }
     }
+
     else if (strcmp(argv[1], "add") == 0)
     {
         if (strcmp(argv[2], "-n") == 0)
@@ -1234,10 +1389,12 @@ int main(int argc, char *argv[])
         }
         run_add(argc, argv, 0);
     }
+
     else if (strcmp(argv[1], "reset") == 0)
     {
         run_reset(argc, argv, 0);
     }
+
     else if (strcmp(argv[1], "status") == 0)
     {
         if (argc > 2)
