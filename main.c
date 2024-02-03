@@ -1309,6 +1309,51 @@ int run_commit(int argc, char *argv[])
 // shortcut set
 int run_set(int argc, char *argv[])
 {
+
+    // finds current directory
+    char cwd[MAX_FILENAME_LENGTH];
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        perror("Could not get main directory!");
+        return 1;
+    }
+    // printf("current directory is %s\n", cwd);
+
+    // checks if repo has been initialized
+    if (doesHaveInit(cwd) != 1)
+    {
+        perror("Repo hasn't initialized!");
+        return 1;
+    }
+
+    chdir(".samit");
+    chdir("shortcuts");
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        perror("Could not get main directory!");
+        return 1;
+    }
+
+    FILE *file;
+
+    if (file = fopen(argv[5], "r"))
+    {
+        perror("Shortcut already exists!");
+        fclose(file);
+        return 1;
+    }
+    else
+    {
+        file = fopen(argv[5], "w");
+        fprintf(file, "%s", argv[3]);
+    }
+
+    fclose(file);
+}
+
+// shortcut replace
+int run_replace(int argc, char *argv[])
+{
     // finds current directory
     char cwd[MAX_FILENAME_LENGTH];
     if (getcwd(cwd, sizeof(cwd)) == NULL)
@@ -1334,7 +1379,7 @@ int run_set(int argc, char *argv[])
     }
 
     FILE *file = fopen(argv[5], "r");
-    if (file == NULL)
+    if (file)
     {
         fclose(file);
         file = fopen(argv[5], "w");
@@ -1342,17 +1387,12 @@ int run_set(int argc, char *argv[])
     }
     else
     {
-        perror("Shortcut already exists!");
+        perror("Shortcut doesn't exist!");
         fclose(file);
         return 1;
     }
 
     fclose(file);
-}
-
-// replace
-int run_replace(int argc, char *argv[])
-{
 }
 
 // testing command
@@ -1497,6 +1537,7 @@ int main(int argc, char *argv[])
 
     else if (strcmp(argv[1], "set") == 0)
     {
+
         if (argc < 6)
         {
             perror("Too less arguements are added!");
