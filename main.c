@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <glob.h>
+#include <time.h>
 
 #define MAX_FILENAME_LENGTH 1000
 #define MAX_NAME_LENGTH 1000
@@ -1304,6 +1305,9 @@ int run_commit(int argc, char *argv[])
         perror("Please enter a valid add command");
         return 1;
     }
+
+    time_t seconds;
+    seconds = time(NULL);
 }
 
 // shortcut set
@@ -1437,6 +1441,56 @@ int run_remove(int argc, char *argv[])
     return 0;
 }
 
+// branch
+int run_branch(int argc, char *argv[])
+{
+    if (argc == 3)
+    {
+        chdir(main_dir);
+        chdir(".samit");
+        chdir("branches");
+
+        if (mkdir(argv[2], 0755) != 0)
+        {
+            perror("Branch already exists!");
+            return 1;
+        }
+        chdir(argv[2]);
+        if (mkdir("commits", 0755) != 0)
+        {
+            perror("Commits not made!");
+            return 1;
+        }
+
+        chdir(main_dir);
+        return 0;
+    }
+    else if (argc == 2)
+    {
+        chdir(main_dir);
+        chdir(".samit");
+        chdir("branches");
+
+        DIR *dir = opendir(".");
+        struct dirent *entry;
+        printf("Available branches:\n\n");
+        while ((entry = readdir(dir)) != NULL)
+        {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                continue;
+            printf("%s\n", entry->d_name);
+        }
+
+        chdir(main_dir);
+        return 0;
+    }
+    else
+    {
+        perror("Too much arguements!");
+        return 1;
+    }
+}
+
 // testing command
 void print_command(int argc, char *const argv[])
 {
@@ -1497,97 +1551,145 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (strcmp(argv[1], "init") == 0)
+    chdir(".samit");
+    chdir("alias");
+    dir = opendir(".");
+    if (dir == NULL)
     {
-        if (argc > 2)
+        return 1;
+    }
+
+    int argc_alias = 2;
+    char **argv_alias;
+    argv_alias = malloc((MAX_NAME_LENGTH) * sizeof(char *));
+    for (int i = 0; i < MAX_NAME_LENGTH; i++)
+    {
+        argv_alias[i] = malloc(MAX_NAME_LENGTH);
+    }
+
+    strcpy(argv_alias[0], argv[0]);
+    strcpy(argv_alias[1], argv[1]);
+
+    int is_alias = 0;
+
+    while ((entry = readdir(dir)) != NULL)
+    {
+        if (strcmp(entry->d_name, argv_alias[1]) == 0)
+        {
+            is_alias = 1;
+            FILE *file = fopen(entry->d_name, "r");
+            while (fscanf(file, "%s", argv_alias[argc_alias - 1]) != EOF)
+            {
+                argc_alias++;
+            }
+            break;
+        }
+    }
+
+    if (is_alias == 0)
+    {
+        argc_alias = argc;
+        for (int i = 0; i < argc; i++)
+        {
+            strcpy(argv_alias[i], argv[i]);
+        }
+    }
+
+    chdir(cwd);
+
+    if (strcmp(argv_alias[1], "init") == 0)
+    {
+        if (argc_alias > 2)
         {
             perror("Too much arguements are added!");
             return 1;
         }
-        run_init(argc, argv);
+        run_init(argc_alias, argv_alias);
     }
 
-    else if (strcmp(argv[1], "config") == 0)
+    else if (strcmp(argv_alias[1], "config") == 0)
     {
-        if (argc < 4)
+        if (argc_alias < 4)
         {
             perror("config requires atleast 4 arguements!");
             return 1;
         }
-        if (strcmp(argv[2], "-global") == 0)
+        if (strcmp(argv_alias[2], "-global") == 0)
         {
-            if (argc < 5)
+            if (argc_alias < 5)
             {
                 perror("config global requires atleast 5 arguements!");
                 return 1;
             }
-            if (strncmp(argv[3], "alias.", 6) == 0)
+            if (strncmp(argv_alias[3], "alias.", 6) == 0)
             {
-                run_alias_global(argc, argv);
+                run_alias_global(argc_alias, argv_alias);
             }
             else
             {
-                run_config_global(argc, argv);
+                run_config_global(argc_alias, argv_alias);
             }
         }
         else
         {
-            if (strncmp(argv[2], "alias.", 6) == 0)
+            if (strncmp(argv_alias[2], "alias.", 6) == 0)
             {
-                run_alias_local(argc, argv);
+                run_alias_local(argc_alias, argv_alias);
             }
             else
             {
-                run_config_local(argc, argv);
+                run_config_local(argc_alias, argv_alias);
             }
         }
     }
 
-    else if (strcmp(argv[1], "add") == 0)
+    else if (strcmp(argv_alias[1], "add") == 0)
     {
-        if (strcmp(argv[2], "-n") == 0)
+        if (strcmp(argv_alias[2], "-n") == 0)
         {
-            add_n_depth = strtol(argv[3], NULL, 10);
+            add_n_depth = strtol(argv_alias[3], NULL, 10);
         }
-        run_add(argc, argv, 0);
+        run_add(argc_alias, argv_alias, 0);
     }
 
-    else if (strcmp(argv[1], "reset") == 0)
+    else if (strcmp(argv_alias[1], "reset") == 0)
     {
-        run_reset(argc, argv, 0);
+        run_reset(argc_alias, argv_alias, 0);
     }
 
-    else if (strcmp(argv[1], "status") == 0)
+    else if (strcmp(argv_alias[1], "status") == 0)
     {
-        if (argc > 2)
-        {
-            perror("Too much arguements are added!");
-            return 1;
-        }
-        run_status(argc, argv, 0);
-    }
-
-    else if (strcmp(argv[1], "commit") == 0)
-    {
-        if (argc < 2)
+        if (argc_alias > 2)
         {
             perror("Too much arguements are added!");
             return 1;
         }
-        run_commit(argc, argv);
+        run_status(argc_alias, argv_alias, 0);
     }
 
-    else if (strcmp(argv[1], "set") == 0)
+    else if (strcmp(argv_alias[1], "commit") == 0)
+    {
+        if (argc_alias < 2)
+        {
+            perror("Too much arguements are added!");
+            return 1;
+        }
+        run_commit(argc_alias, argv_alias);
+        printf("Waiting for a second:\n");
+        sleep(1);
+    }
+
+    else if (strcmp(argv_alias[1], "set") == 0)
     {
 
-        if (argc < 6)
+        if (argc_alias < 6)
         {
             perror("Too less arguements are added!");
             return 1;
         }
-        if (strcmp(argv[2], "-m") == 0 && strcmp(argv[4], "-s") == 0)
+        if (strcmp(argv_alias[2], "-m") == 0 && strcmp(argv_alias[4], "-s") == 0)
         {
-            run_set(argc, argv);
+            run_set(argc_alias, argv_alias);
         }
         else
         {
@@ -1596,16 +1698,16 @@ int main(int argc, char *argv[])
         }
     }
 
-    else if (strcmp(argv[1], "replace") == 0)
+    else if (strcmp(argv_alias[1], "replace") == 0)
     {
-        if (argc < 6)
+        if (argc_alias < 6)
         {
             perror("Too less arguements are added!");
             return 1;
         }
-        if (strcmp(argv[2], "-m") == 0 && strcmp(argv[4], "-s") == 0)
+        if (strcmp(argv_alias[2], "-m") == 0 && strcmp(argv_alias[4], "-s") == 0)
         {
-            run_replace(argc, argv);
+            run_replace(argc_alias, argv_alias);
         }
         else
         {
@@ -1614,21 +1716,29 @@ int main(int argc, char *argv[])
         }
     }
 
-    else if (strcmp(argv[1], "remove") == 0)
+    else if (strcmp(argv_alias[1], "remove") == 0)
     {
-        if (argc < 4)
+        if (argc_alias < 4)
         {
             perror("Too less arguements are added!");
             return 1;
         }
-        if (strcmp(argv[2], "-s") == 0)
+        if (strcmp(argv_alias[2], "-s") == 0)
         {
-            run_remove(argc, argv);
+            run_remove(argc_alias, argv_alias);
         }
         else
         {
             perror("Remove command not given correctly!");
             return 1;
+        }
+    }
+
+    else if (strcmp(argv_alias[1], "branch") == 0)
+    {
+        if (doesHaveInit(cwd))
+        {
+            run_branch(argc_alias, argv_alias);
         }
     }
 
