@@ -1395,6 +1395,48 @@ int run_replace(int argc, char *argv[])
     fclose(file);
 }
 
+// remove replace
+int run_remove(int argc, char *argv[])
+{
+    // finds current directory
+    char cwd[MAX_FILENAME_LENGTH];
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        perror("Could not get main directory!");
+        return 1;
+    }
+    // printf("current directory is %s\n", cwd);
+
+    // checks if repo has been initialized
+    if (doesHaveInit(cwd) != 1)
+    {
+        perror("Repo hasn't initialized!");
+        return 1;
+    }
+
+    chdir(".samit");
+    chdir("shortcuts");
+    if (getcwd(shortcuts_dir, sizeof(shortcuts_dir)) == NULL)
+    {
+        perror("Could not get main directory!");
+        return 1;
+    }
+
+    FILE *file = fopen(argv[3], "r");
+    if (file)
+    {
+        fclose(file);
+        remove(argv[3]);
+    }
+    else
+    {
+        perror("Shortcut doesn't exist!");
+        return 1;
+    }
+
+    return 0;
+}
+
 // testing command
 void print_command(int argc, char *const argv[])
 {
@@ -1568,6 +1610,24 @@ int main(int argc, char *argv[])
         else
         {
             perror("Replace command not given correctly!");
+            return 1;
+        }
+    }
+
+    else if (strcmp(argv[1], "remove") == 0)
+    {
+        if (argc < 4)
+        {
+            perror("Too less arguements are added!");
+            return 1;
+        }
+        if (strcmp(argv[2], "-s") == 0)
+        {
+            run_remove(argc, argv);
+        }
+        else
+        {
+            perror("Remove command not given correctly!");
             return 1;
         }
     }
