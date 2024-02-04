@@ -1357,7 +1357,7 @@ int run_commit(int argc, char *argv[], int level)
             return 1;
         }
         strcpy(destination_file, cwd_branch);
-
+        strcpy(branch_commit_dir, cwd_branch);
 
         // makes file name
         time_t seconds;
@@ -1379,7 +1379,6 @@ int run_commit(int argc, char *argv[], int level)
             return 1;
         }
         strcat(destination_file, seconds_string);
-                strcpy(branch_commit_dir, destination_file);
         chdir(destination_file);
 
         // writing config for current commit
@@ -1395,11 +1394,10 @@ int run_commit(int argc, char *argv[], int level)
         fgets(head_ID, 20, head_file);
         fclose(head_file);
         head_file = fopen("head", "w");
-        fprintf(file, "%s", head_ID);
+        fprintf(file, "%s\n", head_ID);
         fprintf(head_file, "%s\n", seconds_string);
         fclose(head_file);
-
-        //printf("%s\n", destination_file);
+        printf("%s\n", destination_file);
 
         // copying files
         chdir(main_dir);
@@ -1448,7 +1446,7 @@ int run_commit(int argc, char *argv[], int level)
     {
         return 0;
     }
-    
+    // fprintf(file, "format is: HEAD/BODY,branch,id,date,prev_id,message,num_files");
     // fclose(file);
     char **argv_local;
     argv_local = malloc((3) * sizeof(char *));
@@ -1464,36 +1462,13 @@ int run_commit(int argc, char *argv[], int level)
     run_reset(3, argv_local, 0);
 
     chdir(branch_commit_dir);
-    FILE *file_again = fopen("samit-commit-info", "a");
+    printf("%s\n",branch_commit_dir);
+    FILE *file_again = fopen("sam-commit-info", "w");
     char commit_files_added_string[256];
     sprintf(commit_files_added_string, "%d", commit_files_added);
-    fprintf(file_again, "%s\n",commit_files_added_string);
-
-    chdir(main_dir);
-    chdir(".samit/config");
-    FILE *username = fopen("username","r");
-    char username_string[MAX_NAME_LENGTH];
-    fgets(username_string,MAX_NAME_LENGTH,username);
-    fclose(username);
-    FILE *email = fopen("email","r");
-    char email_string[MAX_NAME_LENGTH];
-    fgets(email_string,MAX_NAME_LENGTH,email);
-    fclose(email);
-    
-    fprintf(file_again, "%s",username_string);
-    fprintf(file_again, "%s\n",email_string);
-
+    printf("%s\n",commit_files_added_string);
+    fprintf(file_again, "aaaaa\n");
     fclose(file_again);
-    /* FORMAT:
-    branch
-    ID
-    date
-    message
-    previous commit ID
-    number of files commited
-    author name
-    author email
-    */
     return 0;
 }
 
