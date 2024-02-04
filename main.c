@@ -28,6 +28,8 @@ char shortcuts_dir[MAX_FILENAME_LENGTH];
 char branch_commit_dir[MAX_FILENAME_LENGTH];
 
 int commit_files_added = 0;
+char commit_id[MAX_FILENAME_LENGTH];
+char branch_name[MAX_FILENAME_LENGTH];
 
 char destination_file[MAX_FILENAME_LENGTH];
 char destination_file_stage[MAX_FILENAME_LENGTH]; // for status reverse checking
@@ -107,6 +109,8 @@ int create_configs(char *username, char *email)
     {
         return 1;
     }
+    file = fopen("commit-id-list", "w");
+    fclose(file);
     chdir("master");
     if (getcwd(master_dir, sizeof(master_dir)) == NULL)
     {
@@ -126,6 +130,11 @@ int create_configs(char *username, char *email)
         return 1;
     }
     file = fopen("head", "w");
+    fprintf(file, "%s", "0");
+    if (file == NULL)
+        return 1;
+    fclose(file);
+    file = fopen("current", "w");
     fprintf(file, "%s", "0");
     if (file == NULL)
         return 1;
@@ -1328,7 +1337,7 @@ int run_commit(int argc, char *argv[], int level)
         chdir(main_dir);
         chdir(".samit/config");
 
-        char branch_name[MAX_FILENAME_LENGTH];
+        branch_name[MAX_FILENAME_LENGTH];
         FILE *file = fopen("branch", "r");
         fgets(branch_name, MAX_FILENAME_LENGTH, file);
         fclose(file);
@@ -1358,7 +1367,6 @@ int run_commit(int argc, char *argv[], int level)
         }
         strcpy(destination_file, cwd_branch);
 
-
         // makes file name
         time_t seconds;
 
@@ -1379,7 +1387,7 @@ int run_commit(int argc, char *argv[], int level)
             return 1;
         }
         strcat(destination_file, seconds_string);
-                strcpy(branch_commit_dir, destination_file);
+        strcpy(branch_commit_dir, destination_file);
         chdir(destination_file);
 
         // writing config for current commit
@@ -1397,7 +1405,12 @@ int run_commit(int argc, char *argv[], int level)
         head_file = fopen("head", "w");
         fprintf(file, "%s", head_ID);
         fprintf(head_file, "%s\n", seconds_string);
+        strcpy(commit_id, seconds_string);
         fclose(head_file);
+
+        FILE *current_file = fopen("current", "w");
+        fprintf(file, "%s", head_ID);
+        fclose(current_file);
 
         // printf("%s\n", destination_file);
 
@@ -1448,7 +1461,7 @@ int run_commit(int argc, char *argv[], int level)
     {
         return 0;
     }
-    
+
     // fclose(file);
     char **argv_local;
     argv_local = malloc((3) * sizeof(char *));
@@ -1467,23 +1480,30 @@ int run_commit(int argc, char *argv[], int level)
     FILE *file_again = fopen("samit-commit-info", "a");
     char commit_files_added_string[256];
     sprintf(commit_files_added_string, "%d", commit_files_added);
-    fprintf(file_again, "%s\n",commit_files_added_string);
+    fprintf(file_again, "%s\n", commit_files_added_string);
 
     chdir(main_dir);
     chdir(".samit/config");
-    FILE *username = fopen("username","r");
+    FILE *username = fopen("username", "r");
     char username_string[MAX_NAME_LENGTH];
-    fgets(username_string,MAX_NAME_LENGTH,username);
+    fgets(username_string, MAX_NAME_LENGTH, username);
     fclose(username);
-    FILE *email = fopen("email","r");
+    FILE *email = fopen("email", "r");
     char email_string[MAX_NAME_LENGTH];
-    fgets(email_string,MAX_NAME_LENGTH,email);
+    fgets(email_string, MAX_NAME_LENGTH, email);
     fclose(email);
 
-    fprintf(file_again, "%s\n",username_string);
-    fprintf(file_again, "%s",email_string);
+    fprintf(file_again, "%s\n", username_string);
+    fprintf(file_again, "%s", email_string);
 
     fclose(file_again);
+
+    // writes id and branch in id-list of commits
+    chdir(main_dir);
+    chdir(".samit/branches");
+    file_again = fopen("commit-id-list", "a");
+    fprintf(file_again, "%s %s\n", commit_id, branch_name);
+
     /* FORMAT:
     branch
     ID
@@ -1494,6 +1514,7 @@ int run_commit(int argc, char *argv[], int level)
     author name
     author email
     */
+
     return 0;
 }
 
@@ -1643,11 +1664,24 @@ int run_branch(int argc, char *argv[])
             return 1;
         }
         chdir(argv[2]);
+        
         if (mkdir("commits", 0755) != 0)
         {
             perror("Commits not made!");
             return 1;
         }
+
+        chdir("commits");
+        FILE *file = fopen("head", "w");
+        fprintf(file, "%s", "0");
+        if (file == NULL)
+            return 1;
+        fclose(file);
+        file = fopen("current", "w");
+        fprintf(file, "%s", "0");
+        if (file == NULL)
+            return 1;
+        fclose(file);
 
         chdir(main_dir);
         return 0;
@@ -1677,6 +1711,8 @@ int run_branch(int argc, char *argv[])
         return 1;
     }
 }
+
+// checkout
 
 // testing command
 void print_command(int argc, char *const argv[])
@@ -1868,7 +1904,7 @@ int main(int argc, char *argv[])
             if (strcmp(entry->d_name, argv_alias[3]) == 0)
             {
                 FILE *file = fopen(entry->d_name, "r");
-                fgets(argv_alias[3],MAX_NAME_LENGTH,file);
+                fgets(argv_alias[3], MAX_NAME_LENGTH, file);
                 break;
             }
         }
