@@ -29,6 +29,7 @@ char branch_commit_dir[MAX_FILENAME_LENGTH];
 
 int commit_files_added = 0;
 char commit_id[MAX_FILENAME_LENGTH];
+char commit_dir[MAX_FILENAME_LENGTH];
 char branch_name[MAX_FILENAME_LENGTH];
 
 char destination_file[MAX_FILENAME_LENGTH];
@@ -1409,7 +1410,7 @@ int run_commit(int argc, char *argv[], int level)
         fclose(head_file);
 
         FILE *current_file = fopen("current", "w");
-        fprintf(current_file, "%s", head_ID);
+        fprintf(current_file, "%s", commit_id);
         fclose(current_file);
 
         // printf("%s\n", destination_file);
@@ -1652,6 +1653,22 @@ int run_remove(int argc, char *argv[])
 // branch
 int run_branch(int argc, char *argv[], int level)
 {
+    // TODO: make branch from current, not HEAD
+
+    // finds current directory
+    char cwd[MAX_FILENAME_LENGTH];
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        perror("Could not get main directory!");
+        return 1;
+    }
+
+    // checks if repo has been initialized
+    if (doesHaveInit(cwd) != 1)
+    {
+        perror("Repo hasn't initialized!");
+        return 1;
+    }
     if (argc == 3)
     {
         if (level == 0)
@@ -1769,36 +1786,213 @@ int run_branch(int argc, char *argv[], int level)
 }
 
 // checkout
-int checkout(int argc, char *argv[])
+int run_checkout(int argc, char *argv[], int level, int is_main_deleted)
 {
-    if (argc < 3)
+    if (level == 0)
     {
-        perror("Too less arguements added!");
-        return 1;
-    }
-
-    // checks if there are any files staged
-    chdir(main_dir);
-    chdir(".samit");
-    if (rmdir("staging"))
-    {
-        perror("Staging is not empty!");
-    }
-    else
-    {
-        if (mkdir("staging", 0755) != 0)
+        if (argc < 3)
         {
+            perror("Too less arguements added!");
             return 1;
         }
-        return 1;
+
+        // finds current directory
+        char cwd[MAX_FILENAME_LENGTH];
+        if (getcwd(cwd, sizeof(cwd)) == NULL)
+        {
+            perror("Could not get main directory!");
+            return 1;
+        }
+
+        // checks if repo has been initialized
+        if (doesHaveInit(cwd) != 1)
+        {
+            perror("Repo hasn't initialized!");
+            return 1;
+        }
+
+        // checks if there are any files staged
+        chdir(main_dir);
+        chdir(".samit");
+        if (rmdir("staging"))
+        {
+            perror("Staging is not empty!");
+        }
+        else
+        {
+            if (mkdir("staging", 0755) != 0)
+            {
+                return 1;
+            }
+            return 1;
+        }
+        int null_or_dir_or_file = 0; // null is 0, dir is 1, file is 2
+
+        chdir("branches");
+        struct dirent *entry;
+        DIR *dir = opendir(".");
+        while ((entry = readdir(dir)) != NULL)
+        {
+            if (strcmp(entry->d_name, argv[2]) == 0)
+            {
+                strcpy(branch_name, entry->d_name);
+                null_or_dir_or_file = 1;
+                chdir(main_dir);
+                chdir(".samit/config");
+                FILE *file = fopen("branch", "w");
+                fprintf(file, "%s", entry->d_name);
+                fclose(file);
+                chdir(main_dir);
+                chdir(".samit/branches");
+                chdir(entry->d_name);
+                chdir("commits");
+                FILE *head = fopen("head", "r");
+                FILE *current = fopen("current", "w");
+                fgets(commit_id, MAX_NAME_LENGTH, head);
+                fprintf(current, "%s", commit_id);
+                chdir(commit_id);
+                if (getcwd(commit_dir, sizeof(commit_dir)) == NULL)
+                {
+                    perror("Could not open commit directory!");
+                    return 1;
+                }
+                fclose(head);
+                fclose(current);
+                fclose(file);
+                // chdir(main_dir);
+                // strcpy(destination_file, main_dir);
+                break;
+            }
+        }
+        if (null_or_dir_or_file != 1)
+        {
+            chdir(main_dir);
+            chdir(".samit/config");
+            FILE *file = fopen("branch", "r");
+            fgets(branch_name, MAX_FILENAME_LENGTH, file);
+            chdir(main_dir);
+            chdir(".samit/branches");
+            chdir(branch_name);
+            chdir("commits");
+            dir = opendir(".");
+            while ((entry = readdir(dir)) != NULL)
+            {
+                if (strcmp(entry->d_name, argv[2]) == 0)
+                {
+                    FILE *current = fopen("current", "w");
+                    fprintf(current, "%s", entry->d_name);
+                    fclose(current);
+                    chdir(entry->d_name);
+                    strcpy(commit_id, entry->d_name);
+                    if (getcwd(commit_dir, sizeof(commit_dir)) == NULL)
+                    {
+                        perror("Could not open commit directory!");
+                        return 1;
+                    }
+                    break;
+                }
+            }
+            fclose(file);
+        }
+        if (null_or_dir_or_file == 0)
+        {
+            perror("No file or branch with this name/id found!");
+            return 1;
+        }
+        closedir(dir);
     }
-    chdir("branches");
+
+    // deleting main_dir
+    chdir(main_dir);
     struct dirent *entry;
     DIR *dir = opendir(".");
-    // while ((entry = readdir(dir)) != NULL)
-    // {
-    //     if (entry->d_type ==)
-    // }
+    char output[1000];
+    char tmp_dest_file[MAX_FILENAME_LENGTH];
+    strcpy(tmp_dest_file, destination_file);
+
+    while ((entry = readdir(dir)) != NULL)
+    {
+        // skips these files
+        // TODO: change main.c and samit if
+        if (strcmp(entry->d_name, "samit") == 0 || strcmp(entry->d_name, "main.c") == 0 || strcmp(entry->d_name, ".git") == 0 || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
+        {
+            continue;
+        }
+
+        // creates destination file directory
+        strcat(destination_file, "/");
+        strcat(destination_file, entry->d_name);
+        if (entry->d_type == DT_DIR)
+        {
+            // goes to the directory in destination, switches there and run_resets
+            chdir(entry->d_name);
+            level++;
+            run_checkout(argc, argv, level,is_main_deleted);
+
+            // removes directory
+            rmdir(destination_file);
+            level--;
+            chdir("..");
+        }
+
+        // removes files
+        else
+        {
+            remove(destination_file);
+        }
+
+        strcpy(destination_file, tmp_dest_file);
+    }
+
+    closedir(dir);
+    if (level != 0 && is_main_deleted == 0)
+    {
+        return 0;
+    }
+    is_main_deleted = 1;
+    if (level == 0)
+    {
+        strcpy(destination_file, main_dir);
+    }
+
+    // copying from commit to main_dir
+    chdir(commit_dir);
+    dir = opendir(".");
+    strcpy(tmp_dest_file, destination_file);
+
+    while ((entry = readdir(dir)) != NULL)
+    {
+        // skips these files
+        // TODO: change main.c and samit if
+        if (strcmp(entry->d_name, "samit") == 0 || strcmp(entry->d_name, "main.c") == 0 || strcmp(entry->d_name, ".git") == 0 || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
+        {
+            continue;
+        }
+
+        // creates destination file directory
+        strcat(destination_file, "/");
+        strcat(destination_file, entry->d_name);
+        if (entry->d_type == DT_DIR)
+        {
+            // makes a new directory in destination, switches there and run_adds
+            mkdir(destination_file, 0755);
+            chdir(entry->d_name);
+            level++;
+            run_checkout(argc, argv, level,is_main_deleted);
+            level--;
+            chdir("..");
+        }
+
+        // checks if file is modified/not made
+        else if (compare_file(destination_file, entry->d_name) != 0)
+        {
+            copy_file(entry->d_name, destination_file);
+        }
+
+        strcpy(destination_file, tmp_dest_file);
+    }
+    closedir(dir);
+    return 0;
 }
 
 // testing command
@@ -2061,6 +2255,14 @@ int main(int argc, char *argv[])
         if (doesHaveInit(cwd))
         {
             run_branch(argc_alias, argv_alias, 0);
+        }
+    }
+
+    else if (strcmp(argv_alias[1], "checkout") == 0)
+    {
+        if (doesHaveInit(cwd))
+        {
+            run_checkout(argc_alias, argv_alias, 0,0);
         }
     }
 
