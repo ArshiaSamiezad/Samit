@@ -1409,7 +1409,7 @@ int run_commit(int argc, char *argv[], int level)
         fclose(head_file);
 
         FILE *current_file = fopen("current", "w");
-        fprintf(file, "%s", head_ID);
+        fprintf(current_file, "%s", head_ID);
         fclose(current_file);
 
         // printf("%s\n", destination_file);
@@ -1650,40 +1650,96 @@ int run_remove(int argc, char *argv[])
 }
 
 // branch
-int run_branch(int argc, char *argv[])
+int run_branch(int argc, char *argv[], int level)
 {
     if (argc == 3)
     {
-        chdir(main_dir);
-        chdir(".samit");
-        chdir("branches");
-
-        if (mkdir(argv[2], 0755) != 0)
+        if (level == 0)
         {
-            perror("Branch already exists!");
-            return 1;
+            chdir(main_dir);
+            chdir(".samit");
+            chdir("branches");
+
+            if (mkdir(argv[2], 0755) != 0)
+            {
+                perror("Branch already exists!");
+                return 1;
+            }
+            chdir(argv[2]);
+            if (getcwd(destination_file, sizeof(destination_file)) == NULL)
+            {
+                perror("Could not find branch!");
+                return 1;
+            }
+
+            // if (mkdir("commits", 0755) != 0)
+            // {
+            //     perror("Commits not made!");
+            //     return 1;
+            // }
+
+            // chdir("commits");
+            // FILE *file = fopen("head", "w");
+            // fprintf(file, "%s", "0");
+            // if (file == NULL)
+            //     return 1;
+            // fclose(file);
+            // file = fopen("current", "w");
+            // fprintf(file, "%s", "0");
+            // if (file == NULL)
+            //     return 1;
+            // fclose(file);
+
+            chdir(main_dir);
+            chdir(".samit");
+            chdir("config");
+            FILE *file = fopen("branch", "r");
+            fgets(branch_name, MAX_FILENAME_LENGTH, file);
+            chdir("..");
+            chdir("branches");
+            chdir(branch_name);
         }
-        chdir(argv[2]);
-        
-        if (mkdir("commits", 0755) != 0)
+        struct dirent *entry;
+        DIR *dir = opendir(".");
+        char output[1000];
+        char tmp_dest_file[MAX_FILENAME_LENGTH];
+        strcpy(tmp_dest_file, destination_file);
+
+        while ((entry = readdir(dir)) != NULL)
         {
-            perror("Commits not made!");
-            return 1;
+            // skips these files
+            if (strcmp(entry->d_name, ".git") == 0 || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
+            {
+                continue;
+            }
+
+            // creates destination file directory
+            strcat(destination_file, "/");
+            strcat(destination_file, entry->d_name);
+            if (entry->d_type == DT_DIR)
+            {
+                // makes a new directory in destination, switches there and run_adds
+                mkdir(destination_file, 0755);
+                chdir(entry->d_name);
+                level++;
+                run_branch(argc, argv, level);
+                level--;
+                chdir("..");
+            }
+
+            // checks if file is modified/not made
+            else if (compare_file(destination_file, entry->d_name) != 0)
+            {
+                copy_file(entry->d_name, destination_file);
+            }
+
+            strcpy(destination_file, tmp_dest_file);
         }
-
-        chdir("commits");
-        FILE *file = fopen("head", "w");
-        fprintf(file, "%s", "0");
-        if (file == NULL)
-            return 1;
-        fclose(file);
-        file = fopen("current", "w");
-        fprintf(file, "%s", "0");
-        if (file == NULL)
-            return 1;
-        fclose(file);
-
-        chdir(main_dir);
+        closedir(dir);
+        if (level)
+        {
+            return 0;
+        }
         return 0;
     }
     else if (argc == 2)
@@ -1713,6 +1769,37 @@ int run_branch(int argc, char *argv[])
 }
 
 // checkout
+int checkout(int argc, char *argv[])
+{
+    if (argc < 3)
+    {
+        perror("Too less arguements added!");
+        return 1;
+    }
+
+    // checks if there are any files staged
+    chdir(main_dir);
+    chdir(".samit");
+    if (rmdir("staging"))
+    {
+        perror("Staging is not empty!");
+    }
+    else
+    {
+        if (mkdir("staging", 0755) != 0)
+        {
+            return 1;
+        }
+        return 1;
+    }
+    chdir("branches");
+    struct dirent *entry;
+    DIR *dir = opendir(".");
+    // while ((entry = readdir(dir)) != NULL)
+    // {
+    //     if (entry->d_type ==)
+    // }
+}
 
 // testing command
 void print_command(int argc, char *const argv[])
@@ -1973,7 +2060,7 @@ int main(int argc, char *argv[])
     {
         if (doesHaveInit(cwd))
         {
-            run_branch(argc_alias, argv_alias);
+            run_branch(argc_alias, argv_alias, 0);
         }
     }
 
