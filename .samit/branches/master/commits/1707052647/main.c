@@ -1480,8 +1480,8 @@ int run_commit(int argc, char *argv[], int level)
     fgets(email_string,MAX_NAME_LENGTH,email);
     fclose(email);
 
-    fprintf(file_again, "%s\n",username_string);
-    fprintf(file_again, "%s",email_string);
+    fprintf(file_again, "%s",username_string);
+    fprintf(file_again, "%s\n",email_string);
 
     fclose(file_again);
     /* FORMAT:

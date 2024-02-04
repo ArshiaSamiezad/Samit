@@ -563,7 +563,7 @@ int run_add(int argc, char *argv[], int level)
                 {
 
                     // printf("%s %d\n", globbuf.gl_pathv[i], globbuf.gl_pathc);
-                    if (strcmp(".samit", globbuf.gl_pathv[i]) == 0 || strcmp("..", globbuf.gl_pathv[i]) == 0 || strcmp(".git", globbuf.gl_pathv[i]) == 0)
+                    if (strcmp(".", globbuf.gl_pathv[i]) == 0 || strcmp(".samit", globbuf.gl_pathv[i]) == 0 || strcmp("..", globbuf.gl_pathv[i]) == 0 || strcmp(".git", globbuf.gl_pathv[i]) == 0)
                         continue;
                     struct dirent *entry;
                     DIR *dir = opendir(globbuf.gl_pathv[i]);
@@ -1026,7 +1026,7 @@ int run_reset(int argc, char *argv[], int level)
 
             for (int i = 0; i < globbuf.gl_pathc; i++)
             {
-                if (strcmp(".samit", globbuf.gl_pathv[i]) == 0 || strcmp("..", globbuf.gl_pathv[i]) == 0 || strcmp(".git", globbuf.gl_pathv[i]) == 0)
+                if (strcmp(".", globbuf.gl_pathv[i]) == 0 || strcmp(".samit", globbuf.gl_pathv[i]) == 0 || strcmp("..", globbuf.gl_pathv[i]) == 0 || strcmp(".git", globbuf.gl_pathv[i]) == 0)
                     continue;
                 struct dirent *entry;
                 DIR *dir = opendir(globbuf.gl_pathv[i]);
@@ -1399,7 +1399,7 @@ int run_commit(int argc, char *argv[], int level)
         fprintf(head_file, "%s\n", seconds_string);
         fclose(head_file);
 
-        // printf("%s\n", destination_file);
+        //printf("%s\n", destination_file);
 
         // copying files
         chdir(main_dir);
@@ -1479,9 +1479,9 @@ int run_commit(int argc, char *argv[], int level)
     char email_string[MAX_NAME_LENGTH];
     fgets(email_string,MAX_NAME_LENGTH,email);
     fclose(email);
-
-    fprintf(file_again, "%s\n",username_string);
-    fprintf(file_again, "%s",email_string);
+    
+    fprintf(file_again, "%s",username_string);
+    fprintf(file_again, "%s\n",email_string);
 
     fclose(file_again);
     /* FORMAT:
@@ -1861,18 +1861,6 @@ int main(int argc, char *argv[])
             perror("Too much arguements are added!");
             return 1;
         }
-        chdir(".samit/shortcuts");
-        dir = opendir(".");
-        while ((entry = readdir(dir)) != NULL)
-        {
-            if (strcmp(entry->d_name, argv_alias[3]) == 0)
-            {
-                FILE *file = fopen(entry->d_name, "r");
-                fgets(argv_alias[3],MAX_NAME_LENGTH,file);
-                break;
-            }
-        }
-        chdir(cwd);
         run_commit(argc_alias, argv_alias, 0);
         printf("Waiting for a second:\n");
         sleep(1);
