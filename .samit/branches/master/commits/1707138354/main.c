@@ -1841,14 +1841,8 @@ int run_checkout(int argc, char *argv[], int level, int is_main_deleted)
                 fclose(file);
                 FILE *head = fopen("head", "r");
                 FILE *current = fopen("current", "w");
-                fgets(commit_id, MAX_FILENAME_LENGTH, head);
-                fprintf(current, "%s", commit_id);
-                chdir(commit_id);
-                if (getcwd(commit_dir, sizeof(commit_dir)) == NULL)
-                {
-                    perror("Could not open commit directory!");
-                    return 1;
-                }
+                fgets(commit_id,MAX_FILENAME_LENGTH,head);
+                fprintf(current,"%s", commit_id);
                 chdir(main_dir);
                 fclose(head);
                 fclose(current);
