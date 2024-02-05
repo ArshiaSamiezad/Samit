@@ -1404,7 +1404,7 @@ int run_commit(int argc, char *argv[], int level)
         fgets(head_ID, 20, head_file);
         fclose(head_file);
         head_file = fopen("head", "w");
-        fprintf(file, "%s", head_ID);
+        fprintf(file, "%s\n", head_ID);
         fprintf(head_file, "%s", seconds_string);
         strcpy(commit_id, seconds_string);
         fclose(head_file);
@@ -2043,6 +2043,117 @@ int run_checkout(int argc, char *argv[], int level, int is_main_deleted)
     return 0;
 }
 
+int run_log(int argc, char *argv[])
+{
+    int index_commit_num = 0;
+    chdir(main_dir);
+    chdir(".samit/branches");
+    FILE *list_file = fopen("commit-id-list", "r");
+
+    char **commit_list;
+    commit_list = malloc((MAX_NAME_LENGTH) * sizeof(char *));
+    for (int i = 0; i < MAX_NAME_LENGTH; i++)
+    {
+        commit_list[i] = malloc(MAX_FILENAME_LENGTH);
+    }
+
+    char **branch_list;
+    branch_list = malloc((MAX_NAME_LENGTH) * sizeof(char *));
+    for (int i = 0; i < MAX_NAME_LENGTH; i++)
+    {
+        branch_list[i] = malloc(MAX_FILENAME_LENGTH);
+    }
+
+    while (fscanf(list_file, "%s %s", commit_list[index_commit_num], branch_list[index_commit_num]) != EOF)
+    {
+        index_commit_num++;
+    }
+
+    fclose(list_file);
+
+    for (int i = index_commit_num - 1; i >= 0; i--)
+    {
+        printf("---------------\n");
+        chdir(branch_list[i]);
+        chdir("commits");
+        chdir(commit_list[i]);
+
+        FILE *commit_info = fopen("samit-commit-info", "r");
+        char date_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 3; j++)
+        {
+            fgets(date_string, MAX_NAME_LENGTH, commit_info);
+        }
+        date_string[strlen(date_string) - 1] = '\0';
+        fclose(commit_info);
+        printf("DATE: %s\n", date_string);
+
+        commit_info = fopen("samit-commit-info", "r");
+        char message_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 4; j++)
+        {
+            fgets(message_string, MAX_NAME_LENGTH, commit_info);
+        }
+        message_string[strlen(message_string) - 1] = '\0';
+        fclose(commit_info);
+        printf("MESSAGE: %s\n", message_string);
+
+        commit_info = fopen("samit-commit-info", "r");
+        char author_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 7; j++)
+        {
+            fgets(author_string, MAX_NAME_LENGTH, commit_info);
+        }
+        author_string[strlen(author_string) - 1] = '\0';
+        fclose(commit_info);
+        printf("AUTHOR NAME: %s\n", author_string);
+
+        commit_info = fopen("samit-commit-info", "r");
+        char email_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 8; j++)
+        {
+            fgets(email_string, MAX_NAME_LENGTH, commit_info);
+        }
+        fclose(commit_info);
+        printf("AUTHOR EMAIL: %s\n", email_string);
+
+        commit_info = fopen("samit-commit-info", "r");
+        char ID_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 2; j++)
+        {
+            fgets(ID_string, MAX_NAME_LENGTH, commit_info);
+        }
+        ID_string[strlen(ID_string) - 1] = '\0';
+        fclose(commit_info);
+        printf("COMMIT ID: %s\n", ID_string);
+
+        commit_info = fopen("samit-commit-info", "r");
+        char branch_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 1; j++)
+        {
+            fgets(branch_string, MAX_NAME_LENGTH, commit_info);
+        }
+        branch_string[strlen(branch_string) - 1] = '\0';
+        fclose(commit_info);
+        printf("BRANCH: %s\n", branch_string);
+
+        commit_info = fopen("samit-commit-info", "r");
+        char numfiles_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 6; j++)
+        {
+            fgets(numfiles_string, MAX_NAME_LENGTH, commit_info);
+        }
+        numfiles_string[strlen(numfiles_string) - 1] = '\0';
+        fclose(commit_info);
+        printf("NUMBER OF FILES COMMITED: %s\n", numfiles_string);
+
+        printf("---------------\n\n");
+
+        chdir(main_dir);
+        chdir(".samit/branches");
+    }
+}
+
 // testing command
 void print_command(int argc, char *const argv[])
 {
@@ -2314,10 +2425,18 @@ int main(int argc, char *argv[])
         }
     }
 
+    else if (strcmp(argv_alias[1], "log") == 0)
+    {
+        if (doesHaveInit(cwd))
+        {
+            run_log(argc_alias, argv_alias);
+        }
+    }
+
     return 0;
 }
 
-// Arshia Samiezad 402111498
+// Arshia Samiezad 402111497
 
 /*Github token is:
 
