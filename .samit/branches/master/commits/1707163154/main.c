@@ -2043,18 +2043,6 @@ int run_checkout(int argc, char *argv[], int level, int is_main_deleted)
     return 0;
 }
 
-time_t str_to_time_t(const char *str)
-{
-    struct tm time;
-    memset(&time, 0, sizeof(time));
-    sscanf(str, "%4d-%2d-%2d", &time.tm_year, &time.tm_mon, &time.tm_mday);
-    time.tm_year -= 1900;
-    time.tm_mon--;
-    time.tm_isdst = -1;
-    time_t result = mktime(&time);
-    return result;
-}
-
 int run_log(int argc, char *argv[])
 {
     if (argc == 3 || argc > 4)
@@ -2088,147 +2076,57 @@ int run_log(int argc, char *argv[])
     }
 
     fclose(list_file);
-
     int n_log_number = index_commit_num;
 
-    int is_branch = 0;
-    int is_author = 0;
-
-    if (argc == 4)
+    if (argc == 2)
     {
-        if (strcmp(argv[2], "-n") == 0)
-        {
-            sscanf(argv[3], "%d", &n_log_number);
-            if (n_log_number > index_commit_num)
-            {
-                n_log_number = index_commit_num;
-            }
-        }
-
-        if (strcmp(argv[2], "-branch") == 0)
-        {
-            struct dirent *entry;
-            DIR *dir = opendir(".");
-            while ((entry = readdir(dir)) != NULL)
-            {
-                if (strcmp(argv[3], entry->d_name) == 0)
-                {
-                    is_branch = 1;
-                    strcpy(branch_name, entry->d_name);
-                    break;
-                }
-            }
-            if (is_branch == 0)
-            {
-                perror("Branch name is not valid!");
-                return 1;
-            }
-            closedir(dir);
-        }
+        n_log_number = index_commit_num;
+    }
+    else if (argc == 4 && strcmp(argv[2], "-n") == 0)
+    {
+        sscanf(argv[3], "%d", &n_log_number);
+        if (n_log_number > index_commit_num)
+            n_log_number = index_commit_num;
     }
 
     for (int i = index_commit_num - 1; i >= index_commit_num - n_log_number; i--)
     {
-        if (is_branch)
-        {
-            if (strcmp(branch_name, branch_list[i]))
-            {
-                continue;
-            }
-        }
-
+        printf("---------------\n");
         chdir(branch_list[i]);
         chdir("commits");
         chdir(commit_list[i]);
 
-        FILE *check_author = fopen("samit-commit-info", "r");
-        char author_string[MAX_NAME_LENGTH];
-        for (int j = 0; j < 7; j++)
-        {
-            fgets(author_string, MAX_NAME_LENGTH, check_author);
-        }
-
-        author_string[strlen(author_string) - 1] = '\0';
-        fclose(check_author);
-
-        if (argc > 3)
-        {
-            if (strcmp(argv[2], "-author") == 0)
-            {
-                if (strcmp(author_string, argv[3]))
-                {
-                    chdir(main_dir);
-                    chdir(".samit/branches");
-                    continue;
-                }
-                is_author = 1;
-            }
-        }
-
-        FILE *check_message = fopen("samit-commit-info", "r");
-        char message_string[MAX_NAME_LENGTH];
-        for (int j = 0; j < 4; j++)
-        {
-            fgets(message_string, MAX_NAME_LENGTH, check_message);
-        }
-        message_string[strlen(message_string) - 1] = '\0';
-        fclose(check_message);
-
-        FILE *check_date = fopen("samit-commit-info", "r");
+        FILE *commit_info = fopen("samit-commit-info", "r");
         char date_string[MAX_NAME_LENGTH];
         for (int j = 0; j < 3; j++)
         {
-            fgets(date_string, MAX_NAME_LENGTH, check_date);
+            fgets(date_string, MAX_NAME_LENGTH, commit_info);
         }
         date_string[strlen(date_string) - 1] = '\0';
-        fclose(check_date);
-
-        FILE *check_id = fopen("samit-commit-info", "r");
-        char ID_string[MAX_NAME_LENGTH];
-        for (int j = 0; j < 2; j++)
-        {
-            fgets(ID_string, MAX_NAME_LENGTH, check_id);
-        }
-        ID_string[strlen(ID_string) - 1] = '\0';
-        fclose(check_id);
-
-        if (argc > 3)
-        {
-
-            if (strcmp(argv[2], "-since") == 0)
-            {
-                time_t input_time = str_to_time_t(argv[3]);
-                time_t my_time = strtoull(ID_string, NULL, 10);
-                if (input_time > my_time)
-                {
-                    chdir(main_dir);
-                    chdir(".samit/branches");
-                    continue;
-                }
-            }
-
-            if (strcmp(argv[2], "-before") == 0)
-            {
-                time_t input_time = str_to_time_t(argv[3]);
-                time_t my_time = strtoull(ID_string, NULL, 10);
-                if (input_time < my_time)
-                {
-                    chdir(main_dir);
-                    chdir(".samit/branches");
-                    continue;
-                }
-            }
-        }
-
-        printf("---------------\n");
-
+        fclose(commit_info);
         printf("DATE: %s\n", date_string);
 
+        commit_info = fopen("samit-commit-info", "r");
+        char message_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 4; j++)
+        {
+            fgets(message_string, MAX_NAME_LENGTH, commit_info);
+        }
+        message_string[strlen(message_string) - 1] = '\0';
+        fclose(commit_info);
         printf("MESSAGE: %s\n", message_string);
 
+        commit_info = fopen("samit-commit-info", "r");
+        char author_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 7; j++)
+        {
+            fgets(author_string, MAX_NAME_LENGTH, commit_info);
+        }
+        author_string[strlen(author_string) - 1] = '\0';
+        fclose(commit_info);
         printf("AUTHOR NAME: %s\n", author_string);
 
-        FILE *commit_info = fopen("samit-commit-info", "r");
+        commit_info = fopen("samit-commit-info", "r");
         char email_string[MAX_NAME_LENGTH];
         for (int j = 0; j < 8; j++)
         {
@@ -2237,6 +2135,14 @@ int run_log(int argc, char *argv[])
         fclose(commit_info);
         printf("AUTHOR EMAIL: %s\n", email_string);
 
+        commit_info = fopen("samit-commit-info", "r");
+        char ID_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 2; j++)
+        {
+            fgets(ID_string, MAX_NAME_LENGTH, commit_info);
+        }
+        ID_string[strlen(ID_string) - 1] = '\0';
+        fclose(commit_info);
         printf("COMMIT ID: %s\n", ID_string);
 
         commit_info = fopen("samit-commit-info", "r");
