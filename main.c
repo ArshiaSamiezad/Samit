@@ -1770,7 +1770,7 @@ int run_branch(int argc, char *argv[], int level)
         printf("Available branches:\n\n");
         while ((entry = readdir(dir)) != NULL)
         {
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            if (strcmp(entry->d_name, "commit-id-list") == 0 || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
                 continue;
             printf("%s\n", entry->d_name);
         }
@@ -2154,6 +2154,10 @@ int run_log(int argc, char *argv[])
     }
 }
 
+// int run_tag(int argc, char *argv[]){
+
+// }
+
 // testing command
 void print_command(int argc, char *const argv[])
 {
@@ -2432,6 +2436,14 @@ int main(int argc, char *argv[])
             run_log(argc_alias, argv_alias);
         }
     }
+
+    // else if (strcmp(argv_alias[1], "tag") == 0)
+    // {
+    //     if (doesHaveInit(cwd))
+    //     {
+    //         run_log(argc_alias, argv_alias);
+    //     }
+    // }
 
     return 0;
 }
