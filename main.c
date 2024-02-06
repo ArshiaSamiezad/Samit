@@ -30,6 +30,8 @@ char first_cwd_run[MAX_FILENAME_LENGTH];
 
 char branch_commit_dir[MAX_FILENAME_LENGTH];
 
+int pre_commit_failed = 0;
+
 int commit_files_added = 0;
 char commit_id[MAX_FILENAME_LENGTH];
 char commit_dir[MAX_FILENAME_LENGTH];
@@ -82,6 +84,30 @@ int create_configs(char *username, char *email)
     {
         return 1;
     }
+
+    chdir("list");
+
+    file = fopen("commit-allowed", "w");
+    fprintf(file, "%s", "PASSED");
+    fclose(file);
+    file = fopen("todo-check", "w");
+    fprintf(file, "%s", "PASSED");
+    fclose(file);
+    file = fopen("eof-blank-space", "w");
+    fprintf(file, "%s", "PASSED");
+    fclose(file);
+    file = fopen("format-check", "w");
+    fprintf(file, "%s", "PASSED");
+    fclose(file);
+    file = fopen("file-size-check", "w");
+    fprintf(file, "%s", "PASSED");
+    fclose(file);
+    file = fopen("character-limit", "w");
+    fprintf(file, "%s", "PASSED");
+    fclose(file);
+
+    chdir("..");
+
     if (mkdir("applied", 0755) != 0)
     {
         return 1;
@@ -1354,6 +1380,18 @@ int run_commit(int argc, char *argv[], int level)
         perror("Please enter a valid add command");
         return 1;
     }
+
+    chdir(main_dir);
+    chdir(".samit/hooks/list");
+    FILE *allowed = fopen("commit-allowed", "r");
+    char check_if_precommit[100];
+    fgets(check_if_precommit,100,allowed);
+    if(strcmp("FAILED",check_if_precommit)==0){
+        perror("Pre-commit hook failed. Please fix the error and try again!");
+        return 0;
+    }
+
+    chdir(cwd);
 
     if (strlen(argv[3]) > 72)
     {
@@ -3287,12 +3325,20 @@ const char *get_filename_ext(const char *filename)
 
 int run_hooks(char working_dir[], char working_name[])
 {
-    char file_suffix[MAX_FILENAME_LENGTH] = get_filename_ext(working_name);
+    char file_suffix[MAX_FILENAME_LENGTH];
+    strcpy(file_suffix, get_filename_ext(working_name));
     chdir(main_dir);
     chdir(".samit/hooks/applied");
     DIR *dir = opendir(".");
     chdir(working_dir);
     struct dirent *entry;
+
+    int todo_int = 0;
+    int eof_int = 0;
+    int format_int = 0;
+    int size_int = 0;
+    int limit_int = 0;
+
     while ((entry = readdir(dir)) != NULL)
     {
         if (strcmp(entry->d_name, "todo-check") == 0)
@@ -3306,7 +3352,8 @@ int run_hooks(char working_dir[], char working_name[])
                 fclose(todo_check);
                 continue;
             }
-            FILE *todo_file_check = fopen(entry->d_name, "r");
+            chdir(working_dir);
+            FILE *todo_file_check = fopen(working_name, "r");
             char inp_char;
             char string_check[MAX_LINE_LENGTH];
             while (fscanf(todo_file_check, "%s", string_check))
@@ -3320,6 +3367,7 @@ int run_hooks(char working_dir[], char working_name[])
                     fprintf(todo_check, "%s", "FAILED");
                     fclose(todo_file_check);
                     fclose(todo_check);
+                    todo_int++;
                     continue;
                 }
                 // c or cpp
@@ -3331,6 +3379,7 @@ int run_hooks(char working_dir[], char working_name[])
                     fprintf(todo_check, "%s", "FAILED");
                     fclose(todo_file_check);
                     fclose(todo_check);
+                    todo_int++;
                     continue;
                 }
                 // passing
@@ -3354,7 +3403,8 @@ int run_hooks(char working_dir[], char working_name[])
                 fclose(eof_blank_space);
                 continue;
             }
-            FILE *eof_check_file = fopen(entry->d_name, "r");
+            chdir(working_dir);
+            FILE *eof_check_file = fopen(working_name, "r");
             char c;
             fseek(eof_check_file, -1, SEEK_END);
             c = fgetc(eof_check_file);
@@ -3366,6 +3416,7 @@ int run_hooks(char working_dir[], char working_name[])
                 fprintf(eof_blank_space, "%s", "FAILED");
                 fclose(eof_blank_space);
                 fclose(eof_check_file);
+                eof_int++;
                 continue;
             }
             chdir(main_dir);
@@ -3385,6 +3436,7 @@ int run_hooks(char working_dir[], char working_name[])
                 FILE *format_check = fopen("format-check", "w");
                 fprintf(format_check, "%s", "FAILED");
                 fclose(format_check);
+                format_int++;
                 continue;
             }
             chdir(main_dir);
@@ -3396,8 +3448,9 @@ int run_hooks(char working_dir[], char working_name[])
         }
         if (strcmp(entry->d_name, "file-size-check") == 0)
         {
+            chdir(working_dir);
             struct stat st;
-            stat(entry->d_name, &st);
+            stat(working_name, &st);
             int size = st.st_size;
             if (size > 5242880)
             {
@@ -3406,6 +3459,7 @@ int run_hooks(char working_dir[], char working_name[])
                 FILE *file_size_check = fopen("file-size-check", "w");
                 fprintf(file_size_check, "%s", "FAILED");
                 fclose(file_size_check);
+                size_int++;
                 continue;
             }
             chdir(main_dir);
@@ -3427,9 +3481,8 @@ int run_hooks(char working_dir[], char working_name[])
                 continue;
             }
             int char_count = 0;
-            chdir(main_dir);
-            chdir(".samit/staging");
-            FILE *file = fopen(entry->d_name, "r");
+            chdir(working_dir);
+            FILE *file = fopen(working_name, "r");
             while (fgetc(file) != EOF)
             {
                 char_count++;
@@ -3442,6 +3495,7 @@ int run_hooks(char working_dir[], char working_name[])
                 FILE *character_limit = fopen("character-limit", "w");
                 fprintf(character_limit, "%s", "FAILED");
                 fclose(character_limit);
+                limit_int++;
                 continue;
             }
             chdir(main_dir);
@@ -3452,13 +3506,23 @@ int run_hooks(char working_dir[], char working_name[])
             continue;
         }
     }
-    return 0;
+
+    if (todo_int || eof_int || format_int || size_int || limit_int)
+    {
+        chdir(main_dir);
+        chdir(".samit/hooks/list");
+        FILE *allowed = fopen("commit-allowed", "w");
+        fprintf(allowed, "%s", "FAILED");
+        pre_commit_failed = 1;
+        fclose(allowed);
+    }
 }
 
 int run_precommit(int argc, char *argv[], int level)
 {
     if (argc == 2)
     {
+        int pre_commit_failed_static = 0;
         if (level == 0)
         {
             chdir(main_dir);
@@ -3500,11 +3564,21 @@ int run_precommit(int argc, char *argv[], int level)
             else
             {
                 run_hooks(tmp_dest_file, entry->d_name);
+                if (pre_commit_failed)
+                    pre_commit_failed_static = 1;
             }
 
             strcpy(destination_file, tmp_dest_file);
         }
-        closedir(dir);
+        if (pre_commit_failed_static)
+        {
+            chdir(main_dir);
+            chdir(".samit/hooks/list");
+            FILE *allowed = fopen("commit-allowed", "w");
+            fprintf(allowed, "%s", "FAILED");
+            fclose(allowed);
+            closedir(dir);
+        }
         return 0;
     }
 
@@ -3569,10 +3643,22 @@ int run_precommit(int argc, char *argv[], int level)
     }
     if (strcmp(argv[2], "-f") == 0)
     {
+        int pre_commit_failed_static = 0;
         for (int i = 3; i < argc; i++)
         {
-
-            run_hooks(argc, argv, level);
+            strcpy(staging_dir, main_dir);
+            strcat(staging_dir, "/.samit/staging");
+            run_hooks(staging_dir, argv[i]);
+            if (pre_commit_failed)
+                pre_commit_failed_static = 1;
+        }
+        if (pre_commit_failed_static)
+        {
+            chdir(main_dir);
+            chdir(".samit/hooks/list");
+            FILE *allowed = fopen("commit-allowed", "w");
+            fprintf(allowed, "%s", "FAILED");
+            fclose(allowed);
         }
         return 0;
     }
