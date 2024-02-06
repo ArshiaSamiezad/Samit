@@ -95,6 +95,12 @@ int create_configs(char *username, char *email)
     }
     chdir("..");
 
+    // tags directory
+    if (mkdir("tags", 0755) != 0)
+    {
+        return 1;
+    }
+
     // branches directory
     if (mkdir("branches", 0755) != 0)
     {
@@ -1404,7 +1410,7 @@ int run_commit(int argc, char *argv[], int level)
         fgets(head_ID, 20, head_file);
         fclose(head_file);
         head_file = fopen("head", "w");
-        fprintf(file, "%s", head_ID);
+        fprintf(file, "%s\n", head_ID);
         fprintf(head_file, "%s", seconds_string);
         strcpy(commit_id, seconds_string);
         fclose(head_file);
@@ -1770,7 +1776,7 @@ int run_branch(int argc, char *argv[], int level)
         printf("Available branches:\n\n");
         while ((entry = readdir(dir)) != NULL)
         {
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            if (strcmp(entry->d_name, "commit-id-list") == 0 || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
                 continue;
             printf("%s\n", entry->d_name);
         }
@@ -1828,47 +1834,7 @@ int run_checkout(int argc, char *argv[], int level, int is_main_deleted)
                     return 1;
                 }
             }
-            int null_or_dir_or_file = 0; // null is 0, dir is 1, file is 2
-
-            chdir("branches");
-            struct dirent *entry;
-            DIR *dir = opendir(".");
-            while ((entry = readdir(dir)) != NULL)
-            {
-                if (strcmp(entry->d_name, argv[2]) == 0)
-                {
-                    strcpy(branch_name, entry->d_name);
-                    null_or_dir_or_file = 1;
-                    chdir(main_dir);
-                    chdir(".samit/config");
-                    FILE *file = fopen("branch", "w");
-                    fprintf(file, "%s", entry->d_name);
-                    fclose(file);
-                    chdir(main_dir);
-                    chdir(".samit/branches");
-                    chdir(entry->d_name);
-                    chdir("commits");
-                    FILE *head = fopen("head", "r");
-                    FILE *current = fopen("current", "w");
-                    fgets(commit_id, MAX_NAME_LENGTH, head);
-                    printf("commit id is %s\n",commit_id);
-                    fprintf(current, "%s", commit_id);
-                    chdir(commit_id);
-                    if (getcwd(commit_dir, sizeof(commit_dir)) == NULL)
-                    {
-                        perror("Could not open commit directory!");
-                        return 1;
-                    }
-                    printf("commit dir is %s\n",commit_dir);
-                    
-                    fclose(head);
-                    fclose(current);
-                    // chdir(main_dir);
-                    // strcpy(destination_file, main_dir);
-                    break;
-                }
-            }
-            if (null_or_dir_or_file != 1)
+            if (strcmp("HEAD", argv[2]) == 0)
             {
                 chdir(main_dir);
                 chdir(".samit/config");
@@ -1878,37 +1844,105 @@ int run_checkout(int argc, char *argv[], int level, int is_main_deleted)
                 chdir(".samit/branches");
                 chdir(branch_name);
                 chdir("commits");
-                dir = opendir(".");
-                struct dirent *entry_second;
-                while ((entry_second = readdir(dir)) != NULL)
+                fclose(file);
+                FILE *head = fopen("head", "r");
+                FILE *current = fopen("current", "w");
+                fgets(commit_id, MAX_FILENAME_LENGTH, head);
+                fprintf(current, "%s", commit_id);
+                chdir(commit_id);
+                if (getcwd(commit_dir, sizeof(commit_dir)) == NULL)
                 {
-                    if (strcmp(entry_second->d_name, argv[2]) == 0)
-                    {
-                        null_or_dir_or_file = 2;
-                        FILE *current = fopen("current", "w");
-                        fprintf(current, "%s", entry_second->d_name);
+                    perror("Could not open commit directory!");
+                    return 1;
+                }
+                chdir(main_dir);
+                fclose(head);
+                fclose(current);
+            }
+            else
+            {
+                int null_or_dir_or_file = 0; // null is 0, dir is 1, file is 2
 
-                        fclose(current);
-                        chdir(entry_second->d_name);
-                        strcpy(commit_id, entry_second->d_name);
+                chdir("branches");
+                struct dirent *entry;
+                DIR *dir = opendir(".");
+                while ((entry = readdir(dir)) != NULL)
+                {
+                    if (strcmp(entry->d_name, argv[2]) == 0)
+                    {
+                        strcpy(branch_name, entry->d_name);
+                        null_or_dir_or_file = 1;
+                        chdir(main_dir);
+                        chdir(".samit/config");
+                        FILE *file = fopen("branch", "w");
+                        fprintf(file, "%s", entry->d_name);
+                        fclose(file);
+                        chdir(main_dir);
+                        chdir(".samit/branches");
+                        chdir(entry->d_name);
+                        chdir("commits");
+                        FILE *head = fopen("head", "r");
+                        FILE *current = fopen("current", "w");
+                        fgets(commit_id, MAX_NAME_LENGTH, head);
+                        // printf("commit id is %s\n", commit_id);
+                        fprintf(current, "%s", commit_id);
+                        chdir(commit_id);
                         if (getcwd(commit_dir, sizeof(commit_dir)) == NULL)
                         {
                             perror("Could not open commit directory!");
                             return 1;
                         }
+                        // printf("commit dir is %s\n", commit_dir);
+
+                        fclose(head);
+                        fclose(current);
+                        // chdir(main_dir);
+                        // strcpy(destination_file, main_dir);
                         break;
                     }
                 }
-                fclose(file);
+                if (null_or_dir_or_file != 1)
+                {
+                    chdir(main_dir);
+                    chdir(".samit/config");
+                    FILE *file = fopen("branch", "r");
+                    fgets(branch_name, MAX_FILENAME_LENGTH, file);
+                    chdir(main_dir);
+                    chdir(".samit/branches");
+                    chdir(branch_name);
+                    chdir("commits");
+                    dir = opendir(".");
+                    struct dirent *entry_second;
+                    while ((entry_second = readdir(dir)) != NULL)
+                    {
+                        if (strcmp(entry_second->d_name, argv[2]) == 0)
+                        {
+                            null_or_dir_or_file = 2;
+                            FILE *current = fopen("current", "w");
+                            fprintf(current, "%s", entry_second->d_name);
+
+                            fclose(current);
+                            chdir(entry_second->d_name);
+                            strcpy(commit_id, entry_second->d_name);
+                            if (getcwd(commit_dir, sizeof(commit_dir)) == NULL)
+                            {
+                                perror("Could not open commit directory!");
+                                return 1;
+                            }
+                            break;
+                        }
+                    }
+                    fclose(file);
+                }
+                if (null_or_dir_or_file == 0)
+                {
+                    perror("No file or branch with this name/id found!");
+                    return 1;
+                }
+                strcpy(destination_file, main_dir);
+                chdir(main_dir);
+                closedir(dir);
             }
-            if (null_or_dir_or_file == 0)
-            {
-                perror("No file or branch with this name/id found!");
-                return 1;
-            }
-            strcpy(destination_file, main_dir);
-            chdir(main_dir);
-            closedir(dir);
         }
 
         // deleting main_dir
@@ -1964,7 +1998,7 @@ int run_checkout(int argc, char *argv[], int level, int is_main_deleted)
     if (level == 0)
     {
         strcpy(destination_file, main_dir);
-            chdir(commit_dir);
+        chdir(commit_dir);
         // strcat(destination_file,"/.samit/branches/");
         // strcat(destination_file,branch_name);
         // chdir(destination_file);
@@ -1991,7 +2025,7 @@ int run_checkout(int argc, char *argv[], int level, int is_main_deleted)
         // creates destination file directory
         strcat(destination_file, "/");
         strcat(destination_file, entry_add->d_name);
-        printf("%s\n", destination_file);
+        // printf("%s\n", destination_file);
         if (entry_add->d_type == DT_DIR)
         {
             // makes a new directory in destination, switches there and run_adds
@@ -2013,6 +2047,539 @@ int run_checkout(int argc, char *argv[], int level, int is_main_deleted)
     }
     closedir(dir_add);
     return 0;
+}
+
+time_t str_to_time_t(const char *str)
+{
+    struct tm time;
+    memset(&time, 0, sizeof(time));
+    sscanf(str, "%4d-%2d-%2d", &time.tm_year, &time.tm_mon, &time.tm_mday);
+    time.tm_year -= 1900;
+    time.tm_mon--;
+    time.tm_isdst = -1;
+    time_t result = mktime(&time);
+    return result;
+}
+
+int run_log(int argc, char *argv[])
+{
+    if (argc == 3 || argc > 4)
+    {
+        perror("Invalid number of inputs!");
+        return 1;
+    }
+
+    int index_commit_num = 0;
+    chdir(main_dir);
+    chdir(".samit/branches");
+    FILE *list_file = fopen("commit-id-list", "r");
+
+    char **commit_list;
+    commit_list = malloc((MAX_NAME_LENGTH) * sizeof(char *));
+    for (int i = 0; i < MAX_NAME_LENGTH; i++)
+    {
+        commit_list[i] = malloc(MAX_FILENAME_LENGTH);
+    }
+
+    char **branch_list;
+    branch_list = malloc((MAX_NAME_LENGTH) * sizeof(char *));
+    for (int i = 0; i < MAX_NAME_LENGTH; i++)
+    {
+        branch_list[i] = malloc(MAX_FILENAME_LENGTH);
+    }
+
+    while (fscanf(list_file, "%s %s", commit_list[index_commit_num], branch_list[index_commit_num]) != EOF)
+    {
+        index_commit_num++;
+    }
+
+    fclose(list_file);
+
+    int n_log_number = index_commit_num;
+
+    int is_branch = 0;
+    int is_author = 0;
+
+    if (argc == 4)
+    {
+        if (strcmp(argv[2], "-n") == 0)
+        {
+            sscanf(argv[3], "%d", &n_log_number);
+            if (n_log_number > index_commit_num)
+            {
+                n_log_number = index_commit_num;
+            }
+        }
+
+        if (strcmp(argv[2], "-branch") == 0)
+        {
+            struct dirent *entry;
+            DIR *dir = opendir(".");
+            while ((entry = readdir(dir)) != NULL)
+            {
+                if (strcmp(argv[3], entry->d_name) == 0)
+                {
+                    is_branch = 1;
+                    strcpy(branch_name, entry->d_name);
+                    break;
+                }
+            }
+            if (is_branch == 0)
+            {
+                perror("Branch name is not valid!");
+                return 1;
+            }
+            closedir(dir);
+        }
+    }
+
+    for (int i = index_commit_num - 1; i >= index_commit_num - n_log_number; i--)
+    {
+        if (is_branch)
+        {
+            if (strcmp(branch_name, branch_list[i]))
+            {
+                continue;
+            }
+        }
+
+        chdir(branch_list[i]);
+        chdir("commits");
+        chdir(commit_list[i]);
+
+        FILE *check_author = fopen("samit-commit-info", "r");
+        char author_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 7; j++)
+        {
+            fgets(author_string, MAX_NAME_LENGTH, check_author);
+        }
+
+        author_string[strlen(author_string) - 1] = '\0';
+        fclose(check_author);
+
+        if (argc > 3)
+        {
+            if (strcmp(argv[2], "-author") == 0)
+            {
+                if (strcmp(author_string, argv[3]))
+                {
+                    chdir(main_dir);
+                    chdir(".samit/branches");
+                    continue;
+                }
+                is_author = 1;
+            }
+        }
+
+        FILE *check_message = fopen("samit-commit-info", "r");
+        char message_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 4; j++)
+        {
+            fgets(message_string, MAX_NAME_LENGTH, check_message);
+        }
+        message_string[strlen(message_string) - 1] = '\0';
+        fclose(check_message);
+
+        FILE *check_date = fopen("samit-commit-info", "r");
+        char date_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 3; j++)
+        {
+            fgets(date_string, MAX_NAME_LENGTH, check_date);
+        }
+        date_string[strlen(date_string) - 1] = '\0';
+        fclose(check_date);
+
+        FILE *check_id = fopen("samit-commit-info", "r");
+        char ID_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 2; j++)
+        {
+            fgets(ID_string, MAX_NAME_LENGTH, check_id);
+        }
+        ID_string[strlen(ID_string) - 1] = '\0';
+        fclose(check_id);
+
+        if (argc > 3)
+        {
+
+            if (strcmp(argv[2], "-since") == 0)
+            {
+                time_t input_time = str_to_time_t(argv[3]);
+                time_t my_time = strtoull(ID_string, NULL, 10);
+                if (input_time > my_time)
+                {
+                    chdir(main_dir);
+                    chdir(".samit/branches");
+                    continue;
+                }
+            }
+
+            if (strcmp(argv[2], "-before") == 0)
+            {
+                time_t input_time = str_to_time_t(argv[3]);
+                time_t my_time = strtoull(ID_string, NULL, 10);
+                if (input_time < my_time)
+                {
+                    chdir(main_dir);
+                    chdir(".samit/branches");
+                    continue;
+                }
+            }
+        }
+
+        printf("---------------\n");
+
+        printf("DATE: %s\n", date_string);
+
+        printf("MESSAGE: %s\n", message_string);
+
+        printf("AUTHOR NAME: %s\n", author_string);
+
+        FILE *commit_info = fopen("samit-commit-info", "r");
+        char email_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 8; j++)
+        {
+            fgets(email_string, MAX_NAME_LENGTH, commit_info);
+        }
+        fclose(commit_info);
+        printf("AUTHOR EMAIL: %s\n", email_string);
+
+        printf("COMMIT ID: %s\n", ID_string);
+
+        commit_info = fopen("samit-commit-info", "r");
+        char branch_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 1; j++)
+        {
+            fgets(branch_string, MAX_NAME_LENGTH, commit_info);
+        }
+        branch_string[strlen(branch_string) - 1] = '\0';
+        fclose(commit_info);
+        printf("BRANCH: %s\n", branch_string);
+
+        commit_info = fopen("samit-commit-info", "r");
+        char numfiles_string[MAX_NAME_LENGTH];
+        for (int j = 0; j < 6; j++)
+        {
+            fgets(numfiles_string, MAX_NAME_LENGTH, commit_info);
+        }
+        numfiles_string[strlen(numfiles_string) - 1] = '\0';
+        fclose(commit_info);
+        printf("NUMBER OF FILES COMMITED: %s\n", numfiles_string);
+
+        printf("---------------\n\n");
+
+        chdir(main_dir);
+        chdir(".samit/branches");
+    }
+}
+
+int run_tag(int argc, char *argv[])
+{
+    if (argc == 9)
+    {
+        if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-m") == 0 && strcmp(argv[6], "-c") == 0 && strcmp(argv[8], "-f") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "w");
+            fprintf(tag_file, "tag %s\n", argv[3]);
+            fprintf(tag_file, "commit %s\n", argv[7]);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+
+            FILE *author = fopen("username", "r");
+            char username[MAX_NAME_LENGTH];
+            fgets(username, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            author = fopen("email", "r");
+            char email[MAX_NAME_LENGTH];
+            fgets(email, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            chdir(main_dir);
+            chdir(".samit/tags");
+            fprintf(tag_file, "Author: %s <", username);
+            fprintf(tag_file, "%s>\n", email);
+
+            time_t seconds;
+            time_t mytime = time(NULL);
+            char *time_str = ctime(&mytime);
+            time_str[strlen(time_str) - 1] = '\0';
+            seconds = time(NULL);
+            char seconds_string[256];
+            sprintf(seconds_string, "%lld", seconds);
+
+            fprintf(tag_file, "Date: %s\n", seconds_string);
+            fprintf(tag_file, "Message: %s", argv[5]);
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
+        }
+        else
+        {
+            perror("Invalid arguements!");
+            return 1;
+        }
+    }
+    if (argc == 8)
+    {
+        // without f (dont overwrite)
+        if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-m") == 0 && strcmp(argv[6], "-c") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "r");
+            if (tag_file)
+            {
+                fclose(tag_file);
+                perror("Tag already exists!");
+                return 1;
+            }
+            fclose(tag_file);
+            tag_file = fopen(argv[3], "w");
+            fprintf(tag_file, "tag %s\n", argv[3]);
+            fprintf(tag_file, "commit %s\n", argv[7]);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+
+            FILE *author = fopen("username", "r");
+            char username[MAX_NAME_LENGTH];
+            fgets(username, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            author = fopen("email", "r");
+            char email[MAX_NAME_LENGTH];
+            fgets(email, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            chdir(main_dir);
+            chdir(".samit/tags");
+            fprintf(tag_file, "Author: %s <", username);
+            fprintf(tag_file, "%s>\n", email);
+
+            time_t seconds;
+            time_t mytime = time(NULL);
+            char *time_str = ctime(&mytime);
+            time_str[strlen(time_str) - 1] = '\0';
+            seconds = time(NULL);
+            char seconds_string[256];
+            sprintf(seconds_string, "%lld", seconds);
+
+            fprintf(tag_file, "Date: %s\n", seconds_string);
+            fprintf(tag_file, "Message: %s", argv[5]);
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
+        }
+        else
+        {
+            perror("Invalid arguements!");
+            return 1;
+        }
+    }
+    if (argc == 7)
+    {
+        // without c (HEAD)
+        if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-m") == 0 && strcmp(argv[6], "-f") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "w");
+            fprintf(tag_file, "tag %s\n", argv[3]);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+            FILE *branch = fopen("branch", "r");
+            fgets(branch_name, MAX_FILENAME_LENGTH, branch);
+            fclose(branch);
+
+            chdir(main_dir);
+            chdir(".samit/branches");
+            chdir(branch_name);
+            chdir("commits");
+            FILE *current = fopen("current", "r");
+            char current_name[MAX_FILENAME_LENGTH];
+            fgets(current_name, MAX_FILENAME_LENGTH, current);
+            fclose(current);
+
+            fprintf(tag_file, "commit %s\n", current_name);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+
+            FILE *author = fopen("username", "r");
+            char username[MAX_NAME_LENGTH];
+            fgets(username, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            author = fopen("email", "r");
+            char email[MAX_NAME_LENGTH];
+            fgets(email, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            chdir(main_dir);
+            chdir(".samit/tags");
+            fprintf(tag_file, "Author: %s <", username);
+            fprintf(tag_file, "%s>\n", email);
+
+            time_t seconds;
+            time_t mytime = time(NULL);
+            char *time_str = ctime(&mytime);
+            time_str[strlen(time_str) - 1] = '\0';
+            seconds = time(NULL);
+            char seconds_string[256];
+            sprintf(seconds_string, "%lld", seconds);
+
+            fprintf(tag_file, "Date: %s\n", seconds_string);
+            fprintf(tag_file, "Message: %s", argv[5]);
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
+        }
+        // without m (no message)
+        else if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-c") == 0 && strcmp(argv[6], "-f") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "w");
+            fprintf(tag_file, "tag %s\n", argv[3]);
+            fprintf(tag_file, "commit %s\n", argv[7]);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+
+            FILE *author = fopen("username", "r");
+            char username[MAX_NAME_LENGTH];
+            fgets(username, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            author = fopen("email", "r");
+            char email[MAX_NAME_LENGTH];
+            fgets(email, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            chdir(main_dir);
+            chdir(".samit/tags");
+            fprintf(tag_file, "Author: %s <", username);
+            fprintf(tag_file, "%s>\n", email);
+
+            time_t seconds;
+            time_t mytime = time(NULL);
+            char *time_str = ctime(&mytime);
+            time_str[strlen(time_str) - 1] = '\0';
+            seconds = time(NULL);
+            char seconds_string[256];
+            sprintf(seconds_string, "%lld", seconds);
+
+            fprintf(tag_file, "Date: %s\n", seconds_string);
+            fprintf(tag_file, "Message:");
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
+        }
+        else
+        {
+            perror("Invalid arguements!");
+            return 1;
+        }
+    }
+    if (argc == 6)
+    {
+        // without c (HEAD) and without f (dont overwrite)
+        if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-m") == 0)
+        {
+        }
+        // without m (no message) and without f (dont overwrite)
+        else if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-c") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "r");
+            if (tag_file)
+            {
+                fclose(tag_file);
+                perror("Tag already exists!");
+                return 1;
+            }
+            fclose(tag_file);
+            tag_file = fopen(argv[3], "w");
+            fprintf(tag_file, "tag %s\n", argv[3]);
+            fprintf(tag_file, "commit %s\n", argv[7]);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+
+            FILE *author = fopen("username", "r");
+            char username[MAX_NAME_LENGTH];
+            fgets(username, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            author = fopen("email", "r");
+            char email[MAX_NAME_LENGTH];
+            fgets(email, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            chdir(main_dir);
+            chdir(".samit/tags");
+            fprintf(tag_file, "Author: %s <", username);
+            fprintf(tag_file, "%s>\n", email);
+
+            time_t seconds;
+            time_t mytime = time(NULL);
+            char *time_str = ctime(&mytime);
+            time_str[strlen(time_str) - 1] = '\0';
+            seconds = time(NULL);
+            char seconds_string[256];
+            sprintf(seconds_string, "%lld", seconds);
+
+            fprintf(tag_file, "Date: %s\n", seconds_string);
+            fprintf(tag_file, "Message: %s", argv[5]);
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
+        }
+        else
+        {
+            perror("Invalid arguements!");
+            return 1;
+        }
+    }
+    if (argc == 5)
+    {
+        // without c (HEAD) and without m (no message)
+        if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-f") == 0)
+        {
+        }
+        else
+        {
+            perror("Invalid arguements!");
+            return 1;
+        }
+    }
+    if (argc == 4)
+    {
+        // without c (HEAD) and without m (no message) and without f (dont overwrite)
+        if (strcmp(argv[2], "-a") == 0)
+        {
+        }
+        // show more details
+        if (strcmp(argv[2], "show") == 0)
+        {
+        }
+        else
+        {
+            perror("Invalid arguements!");
+            return 1;
+        }
+    }
+    if (argc == 2)
+    {
+        // list tag names
+        chdir(main_dir);
+        chdir(".sammit/tags");
+    }
 }
 
 // testing command
@@ -2286,10 +2853,26 @@ int main(int argc, char *argv[])
         }
     }
 
+    else if (strcmp(argv_alias[1], "log") == 0)
+    {
+        if (doesHaveInit(cwd))
+        {
+            run_log(argc_alias, argv_alias);
+        }
+    }
+
+    else if (strcmp(argv_alias[1], "tag") == 0)
+    {
+        if (doesHaveInit(cwd))
+        {
+            run_log(argc_alias, argv_alias);
+        }
+    }
+
     return 0;
 }
 
-// Arshia Samiezad 402111498
+// Arshia Samiezad 402111497
 
 /*Github token is:
 

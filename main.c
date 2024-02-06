@@ -12,6 +12,7 @@
 
 #define MAX_FILENAME_LENGTH 1000
 #define MAX_NAME_LENGTH 1000
+#define MAX_LINE_LENGTH 1000
 
 char main_dir[MAX_FILENAME_LENGTH];
 char config_global_dir[MAX_FILENAME_LENGTH];
@@ -94,6 +95,12 @@ int create_configs(char *username, char *email)
         return 1;
     }
     chdir("..");
+
+    // tags directory
+    if (mkdir("tags", 0755) != 0)
+    {
+        return 1;
+    }
 
     // branches directory
     if (mkdir("branches", 0755) != 0)
@@ -2266,9 +2273,508 @@ int run_log(int argc, char *argv[])
     }
 }
 
-// int run_tag(int argc, char *argv[]){
+int run_tag(int argc, char *argv[])
+{
+    if (argc == 9)
+    {
+        if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-m") == 0 && strcmp(argv[6], "-c") == 0 && strcmp(argv[8], "-f") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "w");
+            fprintf(tag_file, "tag %s\n", argv[3]);
+            fprintf(tag_file, "commit %s\n", argv[7]);
 
-// }
+            chdir(main_dir);
+            chdir(".samit/config");
+
+            FILE *author = fopen("username", "r");
+            char username[MAX_NAME_LENGTH];
+            fgets(username, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            author = fopen("email", "r");
+            char email[MAX_NAME_LENGTH];
+            fgets(email, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            chdir(main_dir);
+            chdir(".samit/tags");
+            fprintf(tag_file, "Author: %s <", username);
+            fprintf(tag_file, "%s>\n", email);
+
+            time_t seconds;
+            time_t mytime = time(NULL);
+            char *time_str = ctime(&mytime);
+            time_str[strlen(time_str) - 1] = '\0';
+            seconds = time(NULL);
+            char seconds_string[256];
+            sprintf(seconds_string, "%lld", seconds);
+
+            fprintf(tag_file, "Date: %s\n", seconds_string);
+            fprintf(tag_file, "Message: %s", argv[5]);
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
+        }
+        else
+        {
+            perror("Invalid arguements!");
+            return 1;
+        }
+    }
+    if (argc == 8)
+    {
+        // without f (dont overwrite)
+        if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-m") == 0 && strcmp(argv[6], "-c") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "r");
+            if (tag_file)
+            {
+                fclose(tag_file);
+                perror("Tag already exists!");
+                return 1;
+            }
+            fclose(tag_file);
+            tag_file = fopen(argv[3], "w");
+            fprintf(tag_file, "tag %s\n", argv[3]);
+            fprintf(tag_file, "commit %s\n", argv[7]);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+
+            FILE *author = fopen("username", "r");
+            char username[MAX_NAME_LENGTH];
+            fgets(username, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            author = fopen("email", "r");
+            char email[MAX_NAME_LENGTH];
+            fgets(email, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            chdir(main_dir);
+            chdir(".samit/tags");
+            fprintf(tag_file, "Author: %s <", username);
+            fprintf(tag_file, "%s>\n", email);
+
+            time_t seconds;
+            time_t mytime = time(NULL);
+            char *time_str = ctime(&mytime);
+            time_str[strlen(time_str) - 1] = '\0';
+            seconds = time(NULL);
+            char seconds_string[256];
+            sprintf(seconds_string, "%lld", seconds);
+
+            fprintf(tag_file, "Date: %s\n", seconds_string);
+            fprintf(tag_file, "Message: %s", argv[5]);
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
+        }
+        else
+        {
+            perror("Invalid arguements!");
+            return 1;
+        }
+    }
+    if (argc == 7)
+    {
+        // without c (HEAD)
+        if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-m") == 0 && strcmp(argv[6], "-f") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "w");
+            fprintf(tag_file, "tag %s\n", argv[3]);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+            FILE *branch = fopen("branch", "r");
+            fgets(branch_name, MAX_FILENAME_LENGTH, branch);
+            fclose(branch);
+
+            chdir(main_dir);
+            chdir(".samit/branches");
+            chdir(branch_name);
+            chdir("commits");
+            FILE *current = fopen("current", "r");
+            char current_name[MAX_FILENAME_LENGTH];
+            fgets(current_name, MAX_FILENAME_LENGTH, current);
+            fclose(current);
+
+            fprintf(tag_file, "commit %s\n", current_name);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+
+            FILE *author = fopen("username", "r");
+            char username[MAX_NAME_LENGTH];
+            fgets(username, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            author = fopen("email", "r");
+            char email[MAX_NAME_LENGTH];
+            fgets(email, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            chdir(main_dir);
+            chdir(".samit/tags");
+            fprintf(tag_file, "Author: %s <", username);
+            fprintf(tag_file, "%s>\n", email);
+
+            time_t seconds;
+            time_t mytime = time(NULL);
+            char *time_str = ctime(&mytime);
+            time_str[strlen(time_str) - 1] = '\0';
+            seconds = time(NULL);
+            char seconds_string[256];
+            sprintf(seconds_string, "%lld", seconds);
+
+            fprintf(tag_file, "Date: %s\n", seconds_string);
+            fprintf(tag_file, "Message: %s", argv[5]);
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
+        }
+        // without m (no message)
+        else if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-c") == 0 && strcmp(argv[6], "-f") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "w");
+            fprintf(tag_file, "tag %s\n", argv[3]);
+            fprintf(tag_file, "commit %s\n", argv[5]);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+
+            FILE *author = fopen("username", "r");
+            char username[MAX_NAME_LENGTH];
+            fgets(username, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            author = fopen("email", "r");
+            char email[MAX_NAME_LENGTH];
+            fgets(email, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            chdir(main_dir);
+            chdir(".samit/tags");
+            fprintf(tag_file, "Author: %s <", username);
+            fprintf(tag_file, "%s>\n", email);
+
+            time_t seconds;
+            time_t mytime = time(NULL);
+            char *time_str = ctime(&mytime);
+            time_str[strlen(time_str) - 1] = '\0';
+            seconds = time(NULL);
+            char seconds_string[256];
+            sprintf(seconds_string, "%lld", seconds);
+
+            fprintf(tag_file, "Date: %s\n", seconds_string);
+            fprintf(tag_file, "Message:");
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
+        }
+        else
+        {
+            perror("Invalid arguements!");
+            return 1;
+        }
+    }
+    if (argc == 6)
+    {
+        // without c (HEAD) and without f (dont overwrite)
+        if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-m") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "r");
+            if (tag_file)
+            {
+                fclose(tag_file);
+                perror("Tag already exists!");
+                return 1;
+            }
+            fclose(tag_file);
+            tag_file = fopen(argv[3], "w");
+            fprintf(tag_file, "tag %s\n", argv[3]);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+            FILE *branch = fopen("branch", "r");
+            fgets(branch_name, MAX_FILENAME_LENGTH, branch);
+            fclose(branch);
+
+            chdir(main_dir);
+            chdir(".samit/branches");
+            chdir(branch_name);
+            chdir("commits");
+            FILE *current = fopen("current", "r");
+            char current_name[MAX_FILENAME_LENGTH];
+            fgets(current_name, MAX_FILENAME_LENGTH, current);
+            fclose(current);
+
+            fprintf(tag_file, "commit %s\n", current_name);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+
+            FILE *author = fopen("username", "r");
+            char username[MAX_NAME_LENGTH];
+            fgets(username, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            author = fopen("email", "r");
+            char email[MAX_NAME_LENGTH];
+            fgets(email, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            chdir(main_dir);
+            chdir(".samit/tags");
+            fprintf(tag_file, "Author: %s <", username);
+            fprintf(tag_file, "%s>\n", email);
+
+            time_t seconds;
+            time_t mytime = time(NULL);
+            char *time_str = ctime(&mytime);
+            time_str[strlen(time_str) - 1] = '\0';
+            seconds = time(NULL);
+            char seconds_string[256];
+            sprintf(seconds_string, "%lld", seconds);
+
+            fprintf(tag_file, "Date: %s\n", seconds_string);
+            fprintf(tag_file, "Message: %s", argv[5]);
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
+        }
+        // without m (no message) and without f (dont overwrite)
+        else if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-c") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "r");
+            if (tag_file)
+            {
+                fclose(tag_file);
+                perror("Tag already exists!");
+                return 1;
+            }
+            fclose(tag_file);
+            tag_file = fopen(argv[3], "w");
+            fprintf(tag_file, "tag %s\n", argv[3]);
+            fprintf(tag_file, "commit %s\n", argv[5]);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+
+            FILE *author = fopen("username", "r");
+            char username[MAX_NAME_LENGTH];
+            fgets(username, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            author = fopen("email", "r");
+            char email[MAX_NAME_LENGTH];
+            fgets(email, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            chdir(main_dir);
+            chdir(".samit/tags");
+            fprintf(tag_file, "Author: %s <", username);
+            fprintf(tag_file, "%s>\n", email);
+
+            time_t seconds;
+            time_t mytime = time(NULL);
+            char *time_str = ctime(&mytime);
+            time_str[strlen(time_str) - 1] = '\0';
+            seconds = time(NULL);
+            char seconds_string[256];
+            sprintf(seconds_string, "%lld", seconds);
+
+            fprintf(tag_file, "Date: %s\n", seconds_string);
+            fprintf(tag_file, "Message: %s", argv[5]);
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
+        }
+        else
+        {
+            perror("Invalid arguements!");
+            return 1;
+        }
+    }
+    if (argc == 5)
+    {
+        // without c (HEAD) and without m (no message)
+        if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-f") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "w");
+            fprintf(tag_file, "tag %s\n", argv[3]);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+            FILE *branch = fopen("branch", "r");
+            fgets(branch_name, MAX_FILENAME_LENGTH, branch);
+            fclose(branch);
+
+            chdir(main_dir);
+            chdir(".samit/branches");
+            chdir(branch_name);
+            chdir("commits");
+            FILE *current = fopen("current", "r");
+            char current_name[MAX_FILENAME_LENGTH];
+            fgets(current_name, MAX_FILENAME_LENGTH, current);
+            fclose(current);
+
+            fprintf(tag_file, "commit %s\n", current_name);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+
+            FILE *author = fopen("username", "r");
+            char username[MAX_NAME_LENGTH];
+            fgets(username, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            author = fopen("email", "r");
+            char email[MAX_NAME_LENGTH];
+            fgets(email, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            chdir(main_dir);
+            chdir(".samit/tags");
+            fprintf(tag_file, "Author: %s <", username);
+            fprintf(tag_file, "%s>\n", email);
+
+            time_t seconds;
+            time_t mytime = time(NULL);
+            char *time_str = ctime(&mytime);
+            time_str[strlen(time_str) - 1] = '\0';
+            seconds = time(NULL);
+            char seconds_string[256];
+            sprintf(seconds_string, "%lld", seconds);
+
+            fprintf(tag_file, "Date: %s\n", seconds_string);
+            fprintf(tag_file, "Message:");
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
+        }
+        else
+        {
+            perror("Invalid arguements!");
+            return 1;
+        }
+    }
+    if (argc == 4)
+    {
+        // without c (HEAD) and without m (no message) and without f (dont overwrite)
+        if (strcmp(argv[2], "-a") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "r");
+            if (tag_file)
+            {
+                fclose(tag_file);
+                perror("Tag already exists!");
+                return 1;
+            }
+            fclose(tag_file);
+            tag_file = fopen(argv[3], "w");
+            fprintf(tag_file, "tag %s\n", argv[3]);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+            FILE *branch = fopen("branch", "r");
+            fgets(branch_name, MAX_FILENAME_LENGTH, branch);
+            fclose(branch);
+
+            chdir(main_dir);
+            chdir(".samit/branches");
+            chdir(branch_name);
+            chdir("commits");
+            FILE *current = fopen("current", "r");
+            char current_name[MAX_FILENAME_LENGTH];
+            fgets(current_name, MAX_FILENAME_LENGTH, current);
+            fclose(current);
+
+            fprintf(tag_file, "commit %s\n", current_name);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+
+            FILE *author = fopen("username", "r");
+            char username[MAX_NAME_LENGTH];
+            fgets(username, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            author = fopen("email", "r");
+            char email[MAX_NAME_LENGTH];
+            fgets(email, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            chdir(main_dir);
+            chdir(".samit/tags");
+            fprintf(tag_file, "Author: %s <", username);
+            fprintf(tag_file, "%s>\n", email);
+
+            time_t seconds;
+            time_t mytime = time(NULL);
+            char *time_str = ctime(&mytime);
+            time_str[strlen(time_str) - 1] = '\0';
+            seconds = time(NULL);
+            char seconds_string[256];
+            sprintf(seconds_string, "%lld", seconds);
+
+            fprintf(tag_file, "Date: %s\n", seconds_string);
+            fprintf(tag_file, "Message:");
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
+        }
+        // show more details
+        if (strcmp(argv[2], "show") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "r");
+            for (int i = 0; i < 5; i++)
+            {
+                char line[MAX_LINE_LENGTH];
+                fgets(line, MAX_LINE_LENGTH, tag_file);
+                printf("%s\n", line);
+            }
+            fclose(tag_file);
+            chdir(main_dir);
+        }
+        else
+        {
+            perror("Invalid arguements!");
+            return 1;
+        }
+    }
+    if (argc == 2)
+    {
+        // list tag names
+        chdir(main_dir);
+        chdir(".sammit/tags");
+        char **tag_names;
+        tag_names = malloc((MAX_FILENAME_LENGTH) * sizeof(char *));
+        for (int i = 0; i < MAX_FILENAME_LENGTH; i++)
+        {
+            tag_names[i] = malloc(MAX_FILENAME_LENGTH);
+        }
+        
+    }
+}
 
 // testing command
 void print_command(int argc, char *const argv[])
@@ -2549,15 +3055,15 @@ int main(int argc, char *argv[])
         }
     }
 
-    // else if (strcmp(argv_alias[1], "tag") == 0)
-    // {
-    //     if (doesHaveInit(cwd))
-    //     {
-    //         run_log(argc_alias, argv_alias);
-    //     }
-    // }
+    else if (strcmp(argv_alias[1], "tag") == 0)
+    {
+        if (doesHaveInit(cwd))
+        {
+            run_tag(argc_alias, argv_alias);
+        }
+    }
 
-    // return 0;
+    return 0;
 }
 
 // Arshia Samiezad 402111497
