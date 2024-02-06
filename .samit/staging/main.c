@@ -3421,9 +3421,9 @@ int run_hooks(char working_dir[], char working_name[])
             fclose(todo_file_check);
             fclose(todo_check);
             printf("todo-check");
-            printf("\033[0;32m"); // green
-            printf(" PASSED\n");
-            printf("\033[0m");
+                    printf("\033[0;32m"); // green
+                    printf(" PASSED\n");
+                    printf("\033[0m");
             chdir(working_dir);
             continue;
         }
@@ -3436,10 +3436,7 @@ int run_hooks(char working_dir[], char working_name[])
                 FILE *eof_blank_space = fopen("eof-blank-space", "w");
                 fprintf(eof_blank_space, "%s", "SKIPPED");
                 fclose(eof_blank_space);
-                printf("eof-blank-space");
-                printf("\033[0;33m"); // yellow
-                printf(" SKIP\n");
-                printf("\033[0m");
+                printf("eof-blank-space SKIPPED\n");
                 chdir(working_dir);
                 continue;
             }
@@ -3457,10 +3454,7 @@ int run_hooks(char working_dir[], char working_name[])
                 fclose(eof_blank_space);
                 fclose(eof_check_file);
                 eof_int++;
-                printf("eof-blank-space");
-                printf("\033[0;31m"); // red
-                printf(" FAILED\n");
-                printf("\033[0m");
+                printf("eof-blank-space FAILED\n");
                 chdir(working_dir);
                 continue;
             }
@@ -3470,10 +3464,7 @@ int run_hooks(char working_dir[], char working_name[])
             fprintf(eof_blank_space, "%s", "PASSED");
             fclose(eof_blank_space);
             fclose(eof_check_file);
-            printf("eof-blank-space");
-            printf("\033[0;32m"); // green
-            printf(" PASSED\n");
-            printf("\033[0m");
+            printf("eof-blank-space PASSED\n");
             chdir(working_dir);
             continue;
         }
@@ -3487,10 +3478,7 @@ int run_hooks(char working_dir[], char working_name[])
                 fprintf(format_check, "%s", "FAILED");
                 fclose(format_check);
                 format_int++;
-                printf("format-check");
-                printf("\033[0;31m"); // red
-                printf(" FAILED\n");
-                printf("\033[0m");
+                printf("format-check FAILED\n");
                 chdir(working_dir);
                 continue;
             }
@@ -3499,10 +3487,7 @@ int run_hooks(char working_dir[], char working_name[])
             FILE *format_check = fopen("format-check", "w");
             fprintf(format_check, "%s", "PASSED");
             fclose(format_check);
-            printf("format-check");
-            printf("\033[0;32m"); // GREEN
-            printf(" PASSED\n");
-            printf("\033[0m");
+            printf("format-check PASSED\n");
             chdir(working_dir);
             continue;
         }
@@ -3520,10 +3505,7 @@ int run_hooks(char working_dir[], char working_name[])
                 fprintf(file_size_check, "%s", "FAILED");
                 fclose(file_size_check);
                 size_int++;
-                printf("file-size-check");
-                printf("\033[0;31m"); // red
-                printf(" FAILED\n");
-                printf("\033[0m");
+                printf("file-size-check FAILED\n");
                 chdir(working_dir);
                 continue;
             }
@@ -3532,10 +3514,7 @@ int run_hooks(char working_dir[], char working_name[])
             FILE *file_size_check = fopen("file-size-check", "w");
             fprintf(file_size_check, "%s", "PASSED");
             fclose(file_size_check);
-            printf("file-size-check");
-            printf("\033[0;32m"); // GREEN
-            printf(" PASSED\n");
-            printf("\033[0m");
+            printf("file-size-check PASSED\n");
             chdir(working_dir);
             continue;
         }
@@ -3548,10 +3527,7 @@ int run_hooks(char working_dir[], char working_name[])
                 FILE *character_limit = fopen("character-limit", "w");
                 fprintf(character_limit, "%s", "SKIPPED");
                 fclose(character_limit);
-                printf("character-limit");
-                printf("\033[0;33m"); // red
-                printf(" SKIPPED\n");
-                printf("\033[0m");
+                printf("character-limit SKIPPED\n");
                 chdir(working_dir);
                 continue;
             }
@@ -3569,10 +3545,7 @@ int run_hooks(char working_dir[], char working_name[])
                 chdir(".samit/hooks/applied");
                 FILE *character_limit = fopen("character-limit", "w");
                 fprintf(character_limit, "%s", "FAILED");
-                printf("character-limit");
-                printf("\033[0;31m"); // red
-                printf(" FAILED\n");
-                printf("\033[0m");
+                printf("character-limit FAILED\n");
                 fclose(character_limit);
                 limit_int++;
                 chdir(working_dir);
@@ -3582,10 +3555,7 @@ int run_hooks(char working_dir[], char working_name[])
             chdir(".samit/hooks/applied");
             FILE *character_limit = fopen("character-limit", "w");
             fprintf(character_limit, "%s", "PASSED");
-            printf("character-limit");
-            printf("\033[0;32m"); // GREEN
-            printf(" PASSED\n");
-            printf("\033[0m");
+            printf("character-limit PASSED\n");
             fclose(character_limit);
             chdir(working_dir);
             continue;

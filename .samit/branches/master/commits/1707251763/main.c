@@ -12,6 +12,7 @@
 
 #define MAX_FILENAME_LENGTH 1000
 #define MAX_NAME_LENGTH 1000
+#define MAX_LINE_LENGTH 1000
 
 char main_dir[MAX_FILENAME_LENGTH];
 char config_global_dir[MAX_FILENAME_LENGTH];
@@ -25,7 +26,11 @@ char config_dir[MAX_FILENAME_LENGTH];
 char alias_dir[MAX_FILENAME_LENGTH];
 char shortcuts_dir[MAX_FILENAME_LENGTH];
 
+char first_cwd_run[MAX_FILENAME_LENGTH];
+
 char branch_commit_dir[MAX_FILENAME_LENGTH];
+
+int pre_commit_failed = 0;
 
 int commit_files_added = 0;
 char commit_id[MAX_FILENAME_LENGTH];
@@ -66,6 +71,46 @@ int create_configs(char *username, char *email)
     fprintf(file, "%s", "master");
     if (file == NULL)
         return 1;
+    fclose(file);
+    chdir("..");
+
+    // hooks
+    if (mkdir("hooks", 0755) != 0)
+    {
+        return 1;
+    }
+    chdir("hooks");
+    if (mkdir("list", 0755) != 0)
+    {
+        return 1;
+    }
+
+    chdir("list");
+
+    file = fopen("todo-check", "w");
+    fprintf(file, "%s", "PASSED");
+    fclose(file);
+    file = fopen("eof-blank-space", "w");
+    fprintf(file, "%s", "PASSED");
+    fclose(file);
+    file = fopen("format-check", "w");
+    fprintf(file, "%s", "PASSED");
+    fclose(file);
+    file = fopen("file-size-check", "w");
+    fprintf(file, "%s", "PASSED");
+    fclose(file);
+    file = fopen("character-limit", "w");
+    fprintf(file, "%s", "PASSED");
+    fclose(file);
+
+    chdir("..");
+
+    if (mkdir("applied", 0755) != 0)
+    {
+        return 1;
+    }
+    file = fopen("commit-allowed", "w");
+    fprintf(file, "%s", "PASSED");
     fclose(file);
     chdir("..");
 
@@ -1333,6 +1378,19 @@ int run_commit(int argc, char *argv[], int level)
         return 1;
     }
 
+    chdir(main_dir);
+    chdir(".samit/hooks");
+    FILE *allowed = fopen("commit-allowed", "r");
+    chdir("list");
+    char check_if_precommit[100];
+    fgets(check_if_precommit,100,allowed);
+    if(strcmp("FAILED",check_if_precommit)==0){
+        perror("Pre-commit hook failed. Please fix the error and try again!");
+        return 0;
+    }
+
+    chdir(cwd);
+
     if (strlen(argv[3]) > 72)
     {
         perror("Message too long!");
@@ -2445,7 +2503,7 @@ int run_tag(int argc, char *argv[])
             chdir(".samit/tags");
             FILE *tag_file = fopen(argv[3], "w");
             fprintf(tag_file, "tag %s\n", argv[3]);
-            fprintf(tag_file, "commit %s\n", argv[7]);
+            fprintf(tag_file, "commit %s\n", argv[5]);
 
             chdir(main_dir);
             chdir(".samit/config");
@@ -2490,6 +2548,67 @@ int run_tag(int argc, char *argv[])
         // without c (HEAD) and without f (dont overwrite)
         if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-m") == 0)
         {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "r");
+            if (tag_file)
+            {
+                fclose(tag_file);
+                perror("Tag already exists!");
+                return 1;
+            }
+            fclose(tag_file);
+            tag_file = fopen(argv[3], "w");
+            fprintf(tag_file, "tag %s\n", argv[3]);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+            FILE *branch = fopen("branch", "r");
+            fgets(branch_name, MAX_FILENAME_LENGTH, branch);
+            fclose(branch);
+
+            chdir(main_dir);
+            chdir(".samit/branches");
+            chdir(branch_name);
+            chdir("commits");
+            FILE *current = fopen("current", "r");
+            char current_name[MAX_FILENAME_LENGTH];
+            fgets(current_name, MAX_FILENAME_LENGTH, current);
+            fclose(current);
+
+            fprintf(tag_file, "commit %s\n", current_name);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+
+            FILE *author = fopen("username", "r");
+            char username[MAX_NAME_LENGTH];
+            fgets(username, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            author = fopen("email", "r");
+            char email[MAX_NAME_LENGTH];
+            fgets(email, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            chdir(main_dir);
+            chdir(".samit/tags");
+            fprintf(tag_file, "Author: %s <", username);
+            fprintf(tag_file, "%s>\n", email);
+
+            time_t seconds;
+            time_t mytime = time(NULL);
+            char *time_str = ctime(&mytime);
+            time_str[strlen(time_str) - 1] = '\0';
+            seconds = time(NULL);
+            char seconds_string[256];
+            sprintf(seconds_string, "%lld", seconds);
+
+            fprintf(tag_file, "Date: %s\n", seconds_string);
+            fprintf(tag_file, "Message: %s", argv[5]);
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
         }
         // without m (no message) and without f (dont overwrite)
         else if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-c") == 0)
@@ -2506,7 +2625,7 @@ int run_tag(int argc, char *argv[])
             fclose(tag_file);
             tag_file = fopen(argv[3], "w");
             fprintf(tag_file, "tag %s\n", argv[3]);
-            fprintf(tag_file, "commit %s\n", argv[7]);
+            fprintf(tag_file, "commit %s\n", argv[5]);
 
             chdir(main_dir);
             chdir(".samit/config");
@@ -2551,6 +2670,59 @@ int run_tag(int argc, char *argv[])
         // without c (HEAD) and without m (no message)
         if (strcmp(argv[2], "-a") == 0 && strcmp(argv[4], "-f") == 0)
         {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "w");
+            fprintf(tag_file, "tag %s\n", argv[3]);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+            FILE *branch = fopen("branch", "r");
+            fgets(branch_name, MAX_FILENAME_LENGTH, branch);
+            fclose(branch);
+
+            chdir(main_dir);
+            chdir(".samit/branches");
+            chdir(branch_name);
+            chdir("commits");
+            FILE *current = fopen("current", "r");
+            char current_name[MAX_FILENAME_LENGTH];
+            fgets(current_name, MAX_FILENAME_LENGTH, current);
+            fclose(current);
+
+            fprintf(tag_file, "commit %s\n", current_name);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+
+            FILE *author = fopen("username", "r");
+            char username[MAX_NAME_LENGTH];
+            fgets(username, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            author = fopen("email", "r");
+            char email[MAX_NAME_LENGTH];
+            fgets(email, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            chdir(main_dir);
+            chdir(".samit/tags");
+            fprintf(tag_file, "Author: %s <", username);
+            fprintf(tag_file, "%s>\n", email);
+
+            time_t seconds;
+            time_t mytime = time(NULL);
+            char *time_str = ctime(&mytime);
+            time_str[strlen(time_str) - 1] = '\0';
+            seconds = time(NULL);
+            char seconds_string[256];
+            sprintf(seconds_string, "%lld", seconds);
+
+            fprintf(tag_file, "Date: %s\n", seconds_string);
+            fprintf(tag_file, "Message:");
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
         }
         else
         {
@@ -2563,10 +2735,83 @@ int run_tag(int argc, char *argv[])
         // without c (HEAD) and without m (no message) and without f (dont overwrite)
         if (strcmp(argv[2], "-a") == 0)
         {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "r");
+            if (tag_file)
+            {
+                fclose(tag_file);
+                perror("Tag already exists!");
+                return 1;
+            }
+            fclose(tag_file);
+            tag_file = fopen(argv[3], "w");
+            fprintf(tag_file, "tag %s\n", argv[3]);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+            FILE *branch = fopen("branch", "r");
+            fgets(branch_name, MAX_FILENAME_LENGTH, branch);
+            fclose(branch);
+
+            chdir(main_dir);
+            chdir(".samit/branches");
+            chdir(branch_name);
+            chdir("commits");
+            FILE *current = fopen("current", "r");
+            char current_name[MAX_FILENAME_LENGTH];
+            fgets(current_name, MAX_FILENAME_LENGTH, current);
+            fclose(current);
+
+            fprintf(tag_file, "commit %s\n", current_name);
+
+            chdir(main_dir);
+            chdir(".samit/config");
+
+            FILE *author = fopen("username", "r");
+            char username[MAX_NAME_LENGTH];
+            fgets(username, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            author = fopen("email", "r");
+            char email[MAX_NAME_LENGTH];
+            fgets(email, MAX_NAME_LENGTH, author);
+            fclose(author);
+
+            chdir(main_dir);
+            chdir(".samit/tags");
+            fprintf(tag_file, "Author: %s <", username);
+            fprintf(tag_file, "%s>\n", email);
+
+            time_t seconds;
+            time_t mytime = time(NULL);
+            char *time_str = ctime(&mytime);
+            time_str[strlen(time_str) - 1] = '\0';
+            seconds = time(NULL);
+            char seconds_string[256];
+            sprintf(seconds_string, "%lld", seconds);
+
+            fprintf(tag_file, "Date: %s\n", seconds_string);
+            fprintf(tag_file, "Message:");
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
         }
         // show more details
         if (strcmp(argv[2], "show") == 0)
         {
+            chdir(main_dir);
+            chdir(".samit/tags");
+            FILE *tag_file = fopen(argv[3], "r");
+            for (int i = 0; i < 5; i++)
+            {
+                char line[MAX_LINE_LENGTH];
+                fgets(line, MAX_LINE_LENGTH, tag_file);
+                printf("%s\n", line);
+            }
+            fclose(tag_file);
+            chdir(main_dir);
+            return 0;
         }
         else
         {
@@ -2578,8 +2823,882 @@ int run_tag(int argc, char *argv[])
     {
         // list tag names
         chdir(main_dir);
-        chdir(".sammit/tags");
+        chdir(".samit/tags");
+        char **tag_names;
+        tag_names = malloc((MAX_FILENAME_LENGTH) * sizeof(char *));
+        for (int i = 0; i < MAX_FILENAME_LENGTH; i++)
+        {
+            tag_names[i] = malloc(MAX_FILENAME_LENGTH);
+        }
+
+        DIR *dir = opendir(".");
+        struct dirent *entry;
+        int tag_count = 0;
+        while ((entry = readdir(dir)) != NULL)
+        {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            {
+                continue;
+            }
+            strcpy(tag_names[tag_count], entry->d_name);
+            tag_count++;
+        }
+        for (int i = 0; i < tag_count; i++)
+        {
+            for (int j = i + 1; j < tag_count; j++)
+            {
+                if (strcmp(tag_names[i], tag_names[j]) > 0)
+                {
+                    char temp[MAX_FILENAME_LENGTH];
+                    strcpy(temp, tag_names[i]);
+                    strcpy(tag_names[i], tag_names[j]);
+                    strcpy(tag_names[j], temp);
+                }
+            }
+        }
+        for (int i = 0; i < tag_count; i++)
+        {
+            printf("%s\n", tag_names[i], i);
+        }
+        return 0;
     }
+}
+
+// grep
+int run_grep(int argc, char *argv[])
+{
+
+    if (argc == 9)
+    {
+        if (strcmp(argv[2], "-f") == 0 && strcmp(argv[4], "-p") == 0 && strcmp(argv[6], "-c") == 0 && strcmp(argv[8], "-n") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/branches");
+            FILE *find_commit = fopen("commit-id-list", "r");
+            while (fscanf(find_commit, "%s %s", commit_id, branch_name) != EOF)
+            {
+                if (strcmp(commit_id, argv[7]) == 0)
+                    break;
+            }
+            fclose(find_commit);
+            chdir(main_dir);
+            chdir(".samit/branches");
+            chdir(branch_name);
+            chdir("commits");
+            chdir(commit_id);
+
+            // glob_t globbuf;
+            // if (glob(argv[3], 0, NULL, &globbuf) != 0)
+            // {
+            //     printf("%s\n", argv[3]);
+            //     perror("No match.");
+            //     return 1;
+            // }
+            DIR *dir = opendir(".");
+            struct dirent *entry;
+            while ((entry = readdir(dir)) != NULL)
+            {
+
+                // for (int i = 0; i < globbuf.gl_pathc; i++)
+                // {
+                FILE *file = fopen(argv[3], "r");
+                int line_num = 1;
+                int check_if_found = 0;
+                int column_line = 0;
+                int column_line_found = 0;
+                int is_found = 0;
+                char inp_char;
+
+                while ((inp_char = fgetc(file)) != EOF)
+                {
+
+                    column_line++;
+
+                    if (inp_char == '\n')
+                    {
+                        line_num++;
+                        check_if_found = 0;
+                        column_line = 0;
+                    }
+                    // if (check_if_found < strlen(globbuf.gl_pathv[i]))
+                    if (check_if_found < strlen(argv[5]))
+                    {
+                        // if (inp_char == globbuf.gl_pathv[i][check_if_found])
+                        if (inp_char == argv[5][check_if_found])
+                        {
+                            check_if_found++;
+                            // if (check_if_found == strlen(globbuf.gl_pathv[i]))
+                            if (check_if_found == strlen(argv[5]))
+                            {
+                                is_found = 1;
+                                // column_line_found = column_line - strlen(globbuf.gl_pathv[i]) + 1;
+                                column_line_found = column_line - strlen(argv[5]) + 1;
+                                check_if_found = 0;
+                            }
+                        }
+                        else
+                        {
+                            check_if_found = 0;
+                        }
+                    }
+                    if (is_found)
+                    {
+                        is_found = 0;
+                        FILE *file_print = fopen(argv[3], "r");
+                        char line_print[MAX_LINE_LENGTH];
+                        for (int j = 0; j < line_num - 1; j++)
+                        {
+                            fgets(line_print, MAX_LINE_LENGTH, file_print);
+                        }
+                        char printing_character;
+                        for (int j = 1; j < column_line_found; j++)
+                        {
+                            printing_character = fgetc(file_print);
+                            printf("%c", printing_character);
+                        }
+                        // for (int j = 0; j < strlen(globbuf.gl_pathv[i]); j++)
+                        for (int j = 0; j < strlen(argv[5]); j++)
+                        {
+                            printing_character = fgetc(file_print);
+                            printf("\033[0;31m");
+                            printf("%c", printing_character);
+                            printf("\033[0m");
+                        }
+                        while ((printing_character = fgetc(file_print)) != '\n')
+                        {
+                            printf("%c", printing_character);
+                        }
+                        printf("   LINE: %d\n", line_num);
+                        fclose(file_print);
+                    }
+                }
+                fclose(file);
+                //}
+                return 0;
+            }
+        }
+        else
+        {
+            perror("Incorrect arguemtns!");
+            return 1;
+        }
+    }
+    if (argc == 8)
+    {
+        // without n (dont show num line)
+        if (strcmp(argv[2], "-f") == 0 && strcmp(argv[4], "-p") == 0 && strcmp(argv[6], "-c") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/branches");
+            FILE *find_commit = fopen("commit-id-list", "r");
+            while (fscanf(find_commit, "%s %s", commit_id, branch_name) != EOF)
+            {
+                if (strcmp(commit_id, argv[7]) == 0)
+                    break;
+            }
+            fclose(find_commit);
+            chdir(main_dir);
+            chdir(".samit/branches");
+            chdir(branch_name);
+            chdir("commits");
+            chdir(commit_id);
+
+            // glob_t globbuf;
+            // if (glob(argv[3], 0, NULL, &globbuf) != 0)
+            // {
+            //     printf("%s\n", argv[3]);
+            //     perror("No match.");
+            //     return 1;
+            // }
+            DIR *dir = opendir(".");
+            struct dirent *entry;
+            while ((entry = readdir(dir)) != NULL)
+            {
+
+                // for (int i = 0; i < globbuf.gl_pathc; i++)
+                // {
+                FILE *file = fopen(argv[3], "r");
+                int line_num = 1;
+                int check_if_found = 0;
+                int column_line = 0;
+                int column_line_found = 0;
+                int is_found = 0;
+                char inp_char;
+
+                while ((inp_char = fgetc(file)) != EOF)
+                {
+
+                    column_line++;
+
+                    if (inp_char == '\n')
+                    {
+                        line_num++;
+                        check_if_found = 0;
+                        column_line = 0;
+                    }
+                    // if (check_if_found < strlen(globbuf.gl_pathv[i]))
+                    if (check_if_found < strlen(argv[5]))
+                    {
+                        // if (inp_char == globbuf.gl_pathv[i][check_if_found])
+                        if (inp_char == argv[5][check_if_found])
+                        {
+                            check_if_found++;
+                            // if (check_if_found == strlen(globbuf.gl_pathv[i]))
+                            if (check_if_found == strlen(argv[5]))
+                            {
+                                is_found = 1;
+                                // column_line_found = column_line - strlen(globbuf.gl_pathv[i]) + 1;
+                                column_line_found = column_line - strlen(argv[5]) + 1;
+                                check_if_found = 0;
+                            }
+                        }
+                        else
+                        {
+                            check_if_found = 0;
+                        }
+                    }
+                    if (is_found)
+                    {
+                        is_found = 0;
+                        FILE *file_print = fopen(argv[3], "r");
+                        char line_print[MAX_LINE_LENGTH];
+                        for (int j = 0; j < line_num - 1; j++)
+                        {
+                            fgets(line_print, MAX_LINE_LENGTH, file_print);
+                        }
+                        char printing_character;
+                        for (int j = 1; j < column_line_found; j++)
+                        {
+                            printing_character = fgetc(file_print);
+                            printf("%c", printing_character);
+                        }
+                        // for (int j = 0; j < strlen(globbuf.gl_pathv[i]); j++)
+                        for (int j = 0; j < strlen(argv[5]); j++)
+                        {
+                            printing_character = fgetc(file_print);
+                            printf("\033[0;31m");
+                            printf("%c", printing_character);
+                            printf("\033[0m");
+                        }
+                        while ((printing_character = fgetc(file_print)) != '\n')
+                        {
+                            printf("%c", printing_character);
+                        }
+                        printf("\n");
+                        fclose(file_print);
+                    }
+                }
+                fclose(file);
+                //}
+                return 0;
+            }
+        }
+        else
+        {
+            perror("Incorrect arguemtns!");
+            return 1;
+        }
+    }
+    if (argc == 7)
+    {
+        // without c (work on main dir)
+        if (strcmp(argv[2], "-f") == 0 && strcmp(argv[4], "-p") == 0 && strcmp(argv[6], "-n") == 0)
+        {
+            chdir(main_dir);
+
+            // glob_t globbuf;
+            // if (glob(argv[3], 0, NULL, &globbuf) != 0)
+            // {
+            //     printf("%s\n", argv[3]);
+            //     perror("No match.");
+            //     return 1;
+            // }
+            DIR *dir = opendir(".");
+            struct dirent *entry;
+            while ((entry = readdir(dir)) != NULL)
+            {
+
+                // for (int i = 0; i < globbuf.gl_pathc; i++)
+                // {
+                FILE *file = fopen(argv[3], "r");
+                int line_num = 1;
+                int check_if_found = 0;
+                int column_line = 0;
+                int column_line_found = 0;
+                int is_found = 0;
+                char inp_char;
+
+                while ((inp_char = fgetc(file)) != EOF)
+                {
+
+                    column_line++;
+
+                    if (inp_char == '\n')
+                    {
+                        line_num++;
+                        check_if_found = 0;
+                        column_line = 0;
+                    }
+                    // if (check_if_found < strlen(globbuf.gl_pathv[i]))
+                    if (check_if_found < strlen(argv[5]))
+                    {
+                        // if (inp_char == globbuf.gl_pathv[i][check_if_found])
+                        if (inp_char == argv[5][check_if_found])
+                        {
+                            check_if_found++;
+                            // if (check_if_found == strlen(globbuf.gl_pathv[i]))
+                            if (check_if_found == strlen(argv[5]))
+                            {
+                                is_found = 1;
+                                // column_line_found = column_line - strlen(globbuf.gl_pathv[i]) + 1;
+                                column_line_found = column_line - strlen(argv[5]) + 1;
+                                check_if_found = 0;
+                            }
+                        }
+                        else
+                        {
+                            check_if_found = 0;
+                        }
+                    }
+                    if (is_found)
+                    {
+                        is_found = 0;
+                        FILE *file_print = fopen(argv[3], "r");
+                        char line_print[MAX_LINE_LENGTH];
+                        for (int j = 0; j < line_num - 1; j++)
+                        {
+                            fgets(line_print, MAX_LINE_LENGTH, file_print);
+                        }
+                        char printing_character;
+                        for (int j = 1; j < column_line_found; j++)
+                        {
+                            printing_character = fgetc(file_print);
+                            printf("%c", printing_character);
+                        }
+                        // for (int j = 0; j < strlen(globbuf.gl_pathv[i]); j++)
+                        for (int j = 0; j < strlen(argv[5]); j++)
+                        {
+                            printing_character = fgetc(file_print);
+                            printf("\033[0;31m");
+                            printf("%c", printing_character);
+                            printf("\033[0m");
+                        }
+                        while ((printing_character = fgetc(file_print)) != '\n')
+                        {
+                            printf("%c", printing_character);
+                        }
+                        printf("   LINE: %d\n", line_num);
+                        fclose(file_print);
+                    }
+                }
+                fclose(file);
+                //}
+                return 0;
+            }
+        }
+        else
+        {
+            perror("Incorrect arguemtns!");
+            return 1;
+        }
+    }
+    if (argc == 6)
+    {
+
+        // without c (work on main dir) and without n (dont show num line)
+        if (strcmp(argv[2], "-f") == 0 && strcmp(argv[4], "-p"))
+        {
+            chdir(main_dir);
+
+            // glob_t globbuf;
+            // if (glob(argv[3], 0, NULL, &globbuf) != 0)
+            // {
+            //     printf("%s\n", argv[3]);
+            //     perror("No match.");
+            //     return 1;
+            // }
+            DIR *dir = opendir(".");
+            struct dirent *entry;
+            while ((entry = readdir(dir)) != NULL)
+            {
+
+                // for (int i = 0; i < globbuf.gl_pathc; i++)
+                // {
+                FILE *file = fopen(argv[3], "r");
+                int line_num = 1;
+                int check_if_found = 0;
+                int column_line = 0;
+                int column_line_found = 0;
+                int is_found = 0;
+                char inp_char;
+
+                while ((inp_char = fgetc(file)) != EOF)
+                {
+
+                    column_line++;
+
+                    if (inp_char == '\n')
+                    {
+                        line_num++;
+                        check_if_found = 0;
+                        column_line = 0;
+                    }
+                    // if (check_if_found < strlen(globbuf.gl_pathv[i]))
+                    if (check_if_found < strlen(argv[5]))
+                    {
+                        // if (inp_char == globbuf.gl_pathv[i][check_if_found])
+                        if (inp_char == argv[5][check_if_found])
+                        {
+                            check_if_found++;
+                            // if (check_if_found == strlen(globbuf.gl_pathv[i]))
+                            if (check_if_found == strlen(argv[5]))
+                            {
+                                is_found = 1;
+                                // column_line_found = column_line - strlen(globbuf.gl_pathv[i]) + 1;
+                                column_line_found = column_line - strlen(argv[5]) + 1;
+                                check_if_found = 0;
+                            }
+                        }
+                        else
+                        {
+                            check_if_found = 0;
+                        }
+                    }
+                    if (is_found)
+                    {
+                        is_found = 0;
+                        FILE *file_print = fopen(argv[3], "r");
+                        char line_print[MAX_LINE_LENGTH];
+                        for (int j = 0; j < line_num - 1; j++)
+                        {
+                            fgets(line_print, MAX_LINE_LENGTH, file_print);
+                        }
+                        char printing_character;
+                        for (int j = 1; j < column_line_found; j++)
+                        {
+                            printing_character = fgetc(file_print);
+                            printf("%c", printing_character);
+                        }
+                        // for (int j = 0; j < strlen(globbuf.gl_pathv[i]); j++)
+                        for (int j = 0; j < strlen(argv[5]); j++)
+                        {
+                            printing_character = fgetc(file_print);
+                            printf("\033[0;31m");
+                            printf("%c", printing_character);
+                            printf("\033[0m");
+                        }
+                        while ((printing_character = fgetc(file_print)) != '\n')
+                        {
+                            printf("%c", printing_character);
+                        }
+                        printf("\n");
+                        fclose(file_print);
+                    }
+                }
+                fclose(file);
+                //}
+                return 0;
+            }
+        }
+        else
+        {
+            perror("Incorrect arguemtns!");
+            return 1;
+        }
+    }
+    else
+    {
+        perror("Incorrect number of arguemtns!");
+        return 1;
+    }
+}
+
+const char *get_filename_ext(const char *filename)
+{
+    const char *dot = strrchr(filename, '.');
+    if (!dot || dot == filename)
+        return "";
+    return dot + 1;
+}
+
+int run_hooks(char working_dir[], char working_name[])
+{
+    char file_suffix[MAX_FILENAME_LENGTH];
+    strcpy(file_suffix, get_filename_ext(working_name));
+    chdir(main_dir);
+    chdir(".samit/hooks/applied");
+    DIR *dir = opendir(".");
+    chdir(working_dir);
+    struct dirent *entry;
+
+    int todo_int = 0;
+    int eof_int = 0;
+    int format_int = 0;
+    int size_int = 0;
+    int limit_int = 0;
+
+    while ((entry = readdir(dir)) != NULL)
+    {
+        if (strcmp(entry->d_name, "todo-check") == 0)
+        {
+            if (strcmp(file_suffix, "") && strcmp(file_suffix, "txt") && strcmp(file_suffix, "c") && strcmp(file_suffix, "cpp"))
+            {
+                chdir(main_dir);
+                chdir(".samit/hooks/applied");
+                FILE *todo_check = fopen("todo-check", "w");
+                fprintf(todo_check, "%s", "SKIPPED");
+                fclose(todo_check);
+                printf("todo-check SKIPPED\n");
+                continue;
+            }
+            chdir(working_dir);
+            FILE *todo_file_check = fopen(working_name, "r");
+            char inp_char;
+            char string_check[MAX_LINE_LENGTH];
+            while (fscanf(todo_file_check, "%s", string_check))
+            {
+                // text
+                if (strcmp("TODO", string_check) == 0 && (strcmp(file_suffix, "") == 0 || strcmp(file_suffix, "txt") == 0))
+                {
+                    chdir(main_dir);
+                    chdir(".samit/hooks/applied");
+                    FILE *todo_check = fopen("todo-check", "w");
+                    fprintf(todo_check, "%s", "FAILED");
+                    fclose(todo_file_check);
+                    fclose(todo_check);
+                    todo_int++;
+                    printf("todo-check FAILED\n");
+                    continue;
+                }
+                // c or cpp
+                if ((strcmp("TODO", string_check) || strcmp("//TODO", string_check) == 0) && (strcmp(file_suffix, "c") == 0 || strcmp(file_suffix, "cpp") == 0))
+                {
+                    chdir(main_dir);
+                    chdir(".samit/hooks/applied");
+                    FILE *todo_check = fopen("todo-check", "w");
+                    fprintf(todo_check, "%s", "FAILED");
+                    fclose(todo_file_check);
+                    fclose(todo_check);
+                    todo_int++;
+                    printf("todo-check FAILED\n");
+                    continue;
+                }
+                // passing
+                chdir(main_dir);
+                chdir(".samit/hooks/applied");
+                FILE *todo_check = fopen("todo-check", "w");
+                fprintf(todo_check, "%s", "PASSED");
+                fclose(todo_file_check);
+                fclose(todo_check);
+                printf("todo-check PASSED\n");
+                continue;
+            }
+        }
+        if (strcmp(entry->d_name, "eof-blank-space") == 0)
+        {
+            if (strcmp(file_suffix, "") && strcmp(file_suffix, "txt") && strcmp(file_suffix, "c") && strcmp(file_suffix, "cpp"))
+            {
+                chdir(main_dir);
+                chdir(".samit/hooks/applied");
+                FILE *eof_blank_space = fopen("eof-blank-space", "w");
+                fprintf(eof_blank_space, "%s", "SKIPPED");
+                fclose(eof_blank_space);
+                printf("eof-blank-space SKIPPED\n");
+                continue;
+            }
+            chdir(working_dir);
+            FILE *eof_check_file = fopen(working_name, "r");
+            char c;
+            fseek(eof_check_file, -1, SEEK_END);
+            c = fgetc(eof_check_file);
+            if (c == ' ' || c == '\n' || c == '\t' || c == '\r')
+            {
+                chdir(main_dir);
+                chdir(".samit/hooks/applied");
+                FILE *eof_blank_space = fopen("eof-blank-space", "w");
+                fprintf(eof_blank_space, "%s", "FAILED");
+                fclose(eof_blank_space);
+                fclose(eof_check_file);
+                eof_int++;
+                printf("eof-blank-space FAILED\n");
+                continue;
+            }
+            chdir(main_dir);
+            chdir(".samit/hooks/applied");
+            FILE *eof_blank_space = fopen("eof-blank-space", "w");
+            fprintf(eof_blank_space, "%s", "PASSED");
+            fclose(eof_blank_space);
+            fclose(eof_check_file);
+            printf("eof-blank-space PASSED\n");
+            continue;
+        }
+        if (strcmp(entry->d_name, "format-check") == 0)
+        {
+            if (strcmp(file_suffix, "") && strcmp(file_suffix, "txt") && strcmp(file_suffix, "c") && strcmp(file_suffix, "cpp") && strcmp(file_suffix, "mp4") && strcmp(file_suffix, "wav") && strcmp(file_suffix, "mp3"))
+            {
+                chdir(main_dir);
+                chdir(".samit/hooks/applied");
+                FILE *format_check = fopen("format-check", "w");
+                fprintf(format_check, "%s", "FAILED");
+                fclose(format_check);
+                format_int++;
+                printf("format-check FAILED\n");
+                continue;
+            }
+            chdir(main_dir);
+            chdir(".samit/hooks/applied");
+            FILE *format_check = fopen("format-check", "w");
+            fprintf(format_check, "%s", "PASSED");
+            fclose(format_check);
+            printf("format-check PASSED\n");
+            continue;
+        }
+        if (strcmp(entry->d_name, "file-size-check") == 0)
+        {
+            chdir(working_dir);
+            struct stat st;
+            stat(working_name, &st);
+            int size = st.st_size;
+            if (size > 5242880)
+            {
+                chdir(main_dir);
+                chdir(".samit/hooks/applied");
+                FILE *file_size_check = fopen("file-size-check", "w");
+                fprintf(file_size_check, "%s", "FAILED");
+                fclose(file_size_check);
+                size_int++;
+                printf("file-size-check FAILED\n");
+                continue;
+            }
+            chdir(main_dir);
+            chdir(".samit/hooks/applied");
+            FILE *file_size_check = fopen("file-size-check", "w");
+            fprintf(file_size_check, "%s", "PASSED");
+            fclose(file_size_check);
+            printf("file-size-check PASSED\n");
+            continue;
+        }
+        if (strcmp(entry->d_name, "character-limit") == 0)
+        {
+            if (strcmp(file_suffix, "") && strcmp(file_suffix, "txt") && strcmp(file_suffix, "c") && strcmp(file_suffix, "cpp"))
+            {
+                chdir(main_dir);
+                chdir(".samit/hooks/applied");
+                FILE *character_limit = fopen("character-limit", "w");
+                fprintf(character_limit, "%s", "SKIPPED");
+                fclose(character_limit);
+                printf("character-limit SKIPPED\n");
+                continue;
+            }
+            int char_count = 0;
+            chdir(working_dir);
+            FILE *file = fopen(working_name, "r");
+            while (fgetc(file) != EOF)
+            {
+                char_count++;
+            }
+            fclose(file);
+            if (char_count > 20000)
+            {
+                chdir(main_dir);
+                chdir(".samit/hooks/applied");
+                FILE *character_limit = fopen("character-limit", "w");
+                fprintf(character_limit, "%s", "FAILED");
+                printf("character-limit FAILED\n");
+                fclose(character_limit);
+                limit_int++;
+                continue;
+            }
+            chdir(main_dir);
+            chdir(".samit/hooks/applied");
+            FILE *character_limit = fopen("character-limit", "w");
+            fprintf(character_limit, "%s", "PASSED");
+            printf("character-limit PASSED\n");
+            fclose(character_limit);
+            continue;
+        }
+    }
+
+    if (todo_int || eof_int || format_int || size_int || limit_int)
+    {
+        chdir(main_dir);
+        chdir(".samit/hooks");
+        FILE *allowed = fopen("commit-allowed", "w");
+        chdir("list");
+        fprintf(allowed, "%s", "FAILED");
+        pre_commit_failed = 1;
+        fclose(allowed);
+    }
+}
+
+int run_precommit(int argc, char *argv[], int level)
+{
+
+    if (argc == 2)
+    {
+        int pre_commit_failed_static = 0;
+        if (level == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/staging");
+            if (getcwd(destination_file, sizeof(destination_file)) == NULL)
+            {
+                perror("Could not get main directory!");
+                return 1;
+            }
+        }
+        struct dirent *entry;
+        DIR *dir = opendir(".");
+        char output[1000];
+        char tmp_dest_file[MAX_FILENAME_LENGTH];
+        strcpy(tmp_dest_file, destination_file);
+
+        while ((entry = readdir(dir)) != NULL)
+        {
+            // skips these files
+            if (strcmp(entry->d_name, ".git") == 0 || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
+            {
+                continue;
+            }
+
+            // creates destination file directory
+            strcat(destination_file, "/");
+            strcat(destination_file, entry->d_name);
+            if (entry->d_type == DT_DIR)
+            {
+                // makes a new directory in destination, switches there and run_adds
+                chdir(entry->d_name);
+                level++;
+                run_precommit(argc, argv, level);
+                level--;
+                chdir("..");
+            }
+
+            // do hooks
+            else
+            {
+                run_hooks(tmp_dest_file, entry->d_name);
+                printf("------------\n%s:\n",entry->d_name);
+                if (pre_commit_failed)
+                    pre_commit_failed_static = 1;
+            }
+
+            strcpy(destination_file, tmp_dest_file);
+        }
+        if (pre_commit_failed_static)
+        {
+            chdir(main_dir);
+            chdir(".samit/hooks");
+            FILE *allowed = fopen("commit-allowed", "w");
+            chdir("list");
+            fprintf(allowed, "%s", "FAILED");
+            fclose(allowed);
+            closedir(dir);
+        }
+        else{
+            chdir(main_dir);
+            chdir(".samit/hooks");
+            FILE *allowed = fopen("commit-allowed", "w");
+            chdir("list");
+            fprintf(allowed, "%s", "PASSED");
+            fclose(allowed);
+        }
+        return 0;
+    }
+
+    if (argc == 4)
+    {
+
+        if (strcmp(argv[2], "hooks") == 0 && strcmp(argv[3], "list") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/hooks/list");
+            struct dirent *entry;
+            DIR *dir = opendir(".");
+            printf("AVAILABLE HOOKS:\n\n");
+            while ((entry = readdir(dir)) != NULL)
+            {
+                // skips these files
+                if (strcmp(entry->d_name, "commit-allowed") == 0 || strcmp(entry->d_name, ".git") == 0 || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
+                {
+                    continue;
+                }
+                printf("%s\n", entry->d_name);
+            }
+            closedir(dir);
+            return 0;
+        }
+        if (strcmp(argv[2], "applied") == 0 && strcmp(argv[3], "hooks") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/hooks/applied");
+            struct dirent *entry;
+            DIR *dir = opendir(".");
+            printf("APPLIED HOOKS:\n");
+            while ((entry = readdir(dir)) != NULL)
+            {
+                // skips these files
+                if (strcmp(entry->d_name, ".git") == 0 || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
+                {
+                    continue;
+                }
+                printf("%s\n", entry->d_name);
+            }
+            closedir(dir);
+        }
+        return 0;
+    }
+    if (argc == 5)
+    {
+        if (strcmp(argv[2], "add") == 0 && strcmp(argv[3], "hook") == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/hooks/applied");
+            FILE *hook = fopen(argv[4], "w");
+            fprintf(hook, "%s", "SKIPPED");
+            fclose(hook);
+        }
+        if (strcmp(argv[2], "remove") == 0 && strcmp(argv[3], "hook"))
+        {
+            chdir(main_dir);
+            chdir(".samit/hooks/applied");
+            remove(argv[4]);
+        }
+        return 0;
+    }
+    if (strcmp(argv[2], "-f") == 0)
+    {
+        int pre_commit_failed_static = 0;
+        for (int i = 3; i < argc; i++)
+        {
+            strcpy(staging_dir, main_dir);
+            strcat(staging_dir, "/.samit/staging");
+            run_hooks(staging_dir, argv[i]);
+            if (pre_commit_failed)
+                pre_commit_failed_static = 1;
+        }
+        if (pre_commit_failed_static)
+        {
+            chdir(main_dir);
+            chdir(".samit/hooks");
+            FILE *allowed = fopen("commit-allowed", "w");
+            chdir("list");
+            fprintf(allowed, "%s", "FAILED");
+            fclose(allowed);
+        }
+        else{
+            chdir(main_dir);
+            chdir(".samit/hooks");
+            FILE *allowed = fopen("commit-allowed", "w");
+            chdir("list");
+            fprintf(allowed, "%s", "PASSED");
+            fclose(allowed);
+        }
+        return 0;
+    }
+
+    perror("Not correct number of arguements are added!");
+    return 1;
 }
 
 // testing command
@@ -2603,6 +3722,7 @@ int main(int argc, char *argv[])
         return 1;
     }
     strcpy(first_cwd, cwd);
+    strcpy(first_cwd_run, cwd);
 
     chdir("/");
     strcpy(config_global_dir, "/home/");
@@ -2865,7 +3985,23 @@ int main(int argc, char *argv[])
     {
         if (doesHaveInit(cwd))
         {
-            run_log(argc_alias, argv_alias);
+            run_tag(argc_alias, argv_alias);
+        }
+    }
+
+    else if (strcmp(argv_alias[1], "grep") == 0)
+    {
+        if (doesHaveInit(cwd))
+        {
+            run_grep(argc_alias, argv_alias);
+        }
+    }
+
+    else if (strcmp(argv_alias[1], "pre-commit") == 0)
+    {
+        if (doesHaveInit(cwd))
+        {
+            run_precommit(argc_alias, argv_alias, 0);
         }
     }
 
