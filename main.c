@@ -78,8 +78,16 @@ int create_configs(char *username, char *email)
         return 1;
     }
     chdir("hooks");
+    if (mkdir("list", 0755) != 0)
+    {
+        return 1;
+    }
+    if (mkdir("applied", 0755) != 0)
+    {
+        return 1;
+    }
     file = fopen("commit-allowed", "w");
-    fprintf(file, "%s", "yes");
+    fprintf(file, "%s", "PASSED");
     fclose(file);
     chdir("..");
 
@@ -3269,14 +3277,308 @@ int run_grep(int argc, char *argv[])
     }
 }
 
+const char *get_filename_ext(const char *filename)
+{
+    const char *dot = strrchr(filename, '.');
+    if (!dot || dot == filename)
+        return "";
+    return dot + 1;
+}
+
+int run_hooks(char working_dir[], char working_name[])
+{
+    char file_suffix[MAX_FILENAME_LENGTH] = get_filename_ext(working_name);
+    chdir(main_dir);
+    chdir(".samit/hooks/applied");
+    DIR *dir = opendir(".");
+    chdir(working_dir);
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL)
+    {
+        if (strcmp(entry->d_name, "todo-check") == 0)
+        {
+            if (strcmp(file_suffix, "") && strcmp(file_suffix, "txt") && strcmp(file_suffix, "c") && strcmp(file_suffix, "cpp"))
+            {
+                chdir(main_dir);
+                chdir(".samit/hooks/applied");
+                FILE *todo_check = fopen("todo-check", "w");
+                fprintf(todo_check, "%s", "SKIPPED");
+                fclose(todo_check);
+                continue;
+            }
+            FILE *todo_file_check = fopen(entry->d_name, "r");
+            char inp_char;
+            char string_check[MAX_LINE_LENGTH];
+            while (fscanf(todo_file_check, "%s", string_check))
+            {
+                // text
+                if (strcmp("TODO", string_check) == 0 && (strcmp(file_suffix, "") == 0 || strcmp(file_suffix, "txt") == 0))
+                {
+                    chdir(main_dir);
+                    chdir(".samit/hooks/applied");
+                    FILE *todo_check = fopen("todo-check", "w");
+                    fprintf(todo_check, "%s", "FAILED");
+                    fclose(todo_file_check);
+                    fclose(todo_check);
+                    continue;
+                }
+                // c or cpp
+                if ((strcmp("TODO", string_check) || strcmp("//TODO", string_check) == 0) && (strcmp(file_suffix, "c") == 0 || strcmp(file_suffix, "cpp") == 0))
+                {
+                    chdir(main_dir);
+                    chdir(".samit/hooks/applied");
+                    FILE *todo_check = fopen("todo-check", "w");
+                    fprintf(todo_check, "%s", "FAILED");
+                    fclose(todo_file_check);
+                    fclose(todo_check);
+                    continue;
+                }
+                // passing
+                chdir(main_dir);
+                chdir(".samit/hooks/applied");
+                FILE *todo_check = fopen("todo-check", "w");
+                fprintf(todo_check, "%s", "PASSED");
+                fclose(todo_file_check);
+                fclose(todo_check);
+                continue;
+            }
+        }
+        if (strcmp(entry->d_name, "eof-blank-space") == 0)
+        {
+            if (strcmp(file_suffix, "") && strcmp(file_suffix, "txt") && strcmp(file_suffix, "c") && strcmp(file_suffix, "cpp"))
+            {
+                chdir(main_dir);
+                chdir(".samit/hooks/applied");
+                FILE *eof_blank_space = fopen("eof-blank-space", "w");
+                fprintf(eof_blank_space, "%s", "SKIPPED");
+                fclose(eof_blank_space);
+                continue;
+            }
+            FILE *eof_check_file = fopen(entry->d_name, "r");
+            char c;
+            fseek(eof_check_file, -1, SEEK_END);
+            c = fgetc(eof_check_file);
+            if (c == ' ' || c == '\n' || c == '\t' || c == '\r')
+            {
+                chdir(main_dir);
+                chdir(".samit/hooks/applied");
+                FILE *eof_blank_space = fopen("eof-blank-space", "w");
+                fprintf(eof_blank_space, "%s", "FAILED");
+                fclose(eof_blank_space);
+                fclose(eof_check_file);
+                continue;
+            }
+            chdir(main_dir);
+            chdir(".samit/hooks/applied");
+            FILE *eof_blank_space = fopen("eof-blank-space", "w");
+            fprintf(eof_blank_space, "%s", "PASSED");
+            fclose(eof_blank_space);
+            fclose(eof_check_file);
+            continue;
+        }
+        if (strcmp(entry->d_name, "format-check") == 0)
+        {
+            if (strcmp(file_suffix, "") && strcmp(file_suffix, "txt") && strcmp(file_suffix, "c") && strcmp(file_suffix, "cpp") && strcmp(file_suffix, "mp4") && strcmp(file_suffix, "wav") && strcmp(file_suffix, "mp3"))
+            {
+                chdir(main_dir);
+                chdir(".samit/hooks/applied");
+                FILE *format_check = fopen("format-check", "w");
+                fprintf(format_check, "%s", "FAILED");
+                fclose(format_check);
+                continue;
+            }
+            chdir(main_dir);
+            chdir(".samit/hooks/applied");
+            FILE *format_check = fopen("format-check", "w");
+            fprintf(format_check, "%s", "PASSED");
+            fclose(format_check);
+            continue;
+        }
+        if (strcmp(entry->d_name, "file-size-check") == 0)
+        {
+            struct stat st;
+            stat(entry->d_name, &st);
+            int size = st.st_size;
+            if (size > 5242880)
+            {
+                chdir(main_dir);
+                chdir(".samit/hooks/applied");
+                FILE *file_size_check = fopen("file-size-check", "w");
+                fprintf(file_size_check, "%s", "FAILED");
+                fclose(file_size_check);
+                continue;
+            }
+            chdir(main_dir);
+            chdir(".samit/hooks/applied");
+            FILE *file_size_check = fopen("file-size-check", "w");
+            fprintf(file_size_check, "%s", "PASSED");
+            fclose(file_size_check);
+            continue;
+        }
+        if (strcmp(entry->d_name, "character-limit") == 0)
+        {
+            if (strcmp(file_suffix, "") && strcmp(file_suffix, "txt") && strcmp(file_suffix, "c") && strcmp(file_suffix, "cpp"))
+            {
+                chdir(main_dir);
+                chdir(".samit/hooks/applied");
+                FILE *character_limit = fopen("character-limit", "w");
+                fprintf(character_limit, "%s", "SKIPPED");
+                fclose(character_limit);
+                continue;
+            }
+            int char_count = 0;
+            chdir(main_dir);
+            chdir(".samit/staging");
+            FILE *file = fopen(entry->d_name, "r");
+            while (fgetc(file) != EOF)
+            {
+                char_count++;
+            }
+            fclose(file);
+            if (char_count > 20000)
+            {
+                chdir(main_dir);
+                chdir(".samit/hooks/applied");
+                FILE *character_limit = fopen("character-limit", "w");
+                fprintf(character_limit, "%s", "FAILED");
+                fclose(character_limit);
+                continue;
+            }
+            chdir(main_dir);
+            chdir(".samit/hooks/applied");
+            FILE *character_limit = fopen("character-limit", "w");
+            fprintf(character_limit, "%s", "PASSED");
+            fclose(character_limit);
+            continue;
+        }
+    }
+    return 0;
+}
+
 int run_precommit(int argc, char *argv[], int level)
 {
-    if (level == 0)
+    if (argc == 2)
     {
-        chdir(main_dir);
-        chdir(".samit/staging");
+        if (level == 0)
+        {
+            chdir(main_dir);
+            chdir(".samit/staging");
+            if (getcwd(destination_file, sizeof(destination_file)) == NULL)
+            {
+                perror("Could not get main directory!");
+                return 1;
+            }
+        }
+        struct dirent *entry;
         DIR *dir = opendir(".");
+        char output[1000];
+        char tmp_dest_file[MAX_FILENAME_LENGTH];
+        strcpy(tmp_dest_file, destination_file);
+
+        while ((entry = readdir(dir)) != NULL)
+        {
+            // skips these files
+            if (strcmp(entry->d_name, ".git") == 0 || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
+            {
+                continue;
+            }
+
+            // creates destination file directory
+            strcat(destination_file, "/");
+            strcat(destination_file, entry->d_name);
+            if (entry->d_type == DT_DIR)
+            {
+                // makes a new directory in destination, switches there and run_adds
+                chdir(entry->d_name);
+                level++;
+                run_precommit(argc, argv, level);
+                level--;
+                chdir("..");
+            }
+
+            // do hooks
+            else
+            {
+                run_hooks(tmp_dest_file, entry->d_name);
+            }
+
+            strcpy(destination_file, tmp_dest_file);
+        }
+        closedir(dir);
+        return 0;
     }
+
+    if (argc == 4)
+    {
+        if (strcmp(argv[2], "hooks") == 0 && strcmp(argv[3], "list"))
+        {
+            chdir(main_dir);
+            chdir(".samit/hooks/list");
+            struct dirent *entry;
+            DIR *dir = opendir(".");
+            printf("AVAILABLE HOOKS:\n");
+            while ((entry = readdir(dir)) != NULL)
+            {
+                // skips these files
+                if (strcmp(entry->d_name, ".git") == 0 || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
+                {
+                    continue;
+                }
+                printf("%s\n", entry->d_name);
+            }
+            closedir(dir);
+            return 0;
+        }
+        if (strcmp(argv[2], "applied") == 0 && strcmp(argv[3], "hooks"))
+        {
+            chdir(main_dir);
+            chdir(".samit/hooks/applied");
+            struct dirent *entry;
+            DIR *dir = opendir(".");
+            printf("APPLIED HOOKS:\n");
+            while ((entry = readdir(dir)) != NULL)
+            {
+                // skips these files
+                if (strcmp(entry->d_name, ".git") == 0 || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".samit") == 0)
+                {
+                    continue;
+                }
+                printf("%s\n", entry->d_name);
+            }
+            closedir(dir);
+        }
+        return 0;
+    }
+    if (argc == 5)
+    {
+        if (strcmp(argv[2], "add") == 0 && strcmp(argv[3], "hook"))
+        {
+            chdir(main_dir);
+            chdir(".samit/hooks/applied");
+            FILE *hook = fopen(argv[4], "w");
+            fprintf(hook, "%s", "SKIPPED");
+            fclose(hook);
+        }
+        if (strcmp(argv[2], "remove") == 0 && strcmp(argv[3], "hook"))
+        {
+            chdir(main_dir);
+            chdir(".samit/hooks/applied");
+            remove(argv[4]);
+        }
+        return 0;
+    }
+    if (strcmp(argv[2], "-f") == 0)
+    {
+        for (int i = 3; i < argc; i++)
+        {
+
+            run_hooks(argc, argv, level);
+        }
+        return 0;
+    }
+
+    perror("Not correct number of arguements are added!");
+    return 1;
 }
 
 // testing command
