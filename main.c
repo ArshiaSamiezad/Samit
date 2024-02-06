@@ -2765,14 +2765,43 @@ int run_tag(int argc, char *argv[])
     {
         // list tag names
         chdir(main_dir);
-        chdir(".sammit/tags");
+        chdir(".samit/tags");
         char **tag_names;
         tag_names = malloc((MAX_FILENAME_LENGTH) * sizeof(char *));
         for (int i = 0; i < MAX_FILENAME_LENGTH; i++)
         {
             tag_names[i] = malloc(MAX_FILENAME_LENGTH);
         }
-        
+
+        DIR *dir = opendir(".");
+        struct dirent *entry;
+        int tag_count = 0;
+        while ((entry = readdir(dir)) != NULL)
+        {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            {
+                continue;
+            }
+            strcpy(tag_names[tag_count], entry->d_name);
+            tag_count++;
+        }
+        for (int i = 0; i < tag_count; i++)
+        {
+            for (int j = i + 1; j < tag_count; j++)
+            {
+                if (strcmp(tag_names[i], tag_names[j]) > 0)
+                {
+                    char temp[MAX_FILENAME_LENGTH];
+                    strcpy(temp, tag_names[i]);
+                    strcpy(tag_names[i], tag_names[j]);
+                    strcpy(tag_names[j], temp);
+                }
+            }
+        }
+        for (int i = 0; i < tag_count; i++)
+        {
+            printf("%s\n", tag_names[i],i);
+        }
     }
 }
 
