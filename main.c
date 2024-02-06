@@ -3622,7 +3622,11 @@ int run_precommit(int argc, char *argv[], int level)
             if (getcwd(destination_file, sizeof(destination_file)) == NULL)
             {
                 perror("Could not get main directory!");
-                return 1;
+                return 1; // printf("temp %s\n", tmp_dest_file);
+                chdir(tmp_dest_file);
+
+                if (pre_commit_failed)
+                    pre_commit_failed_static = 1;
             }
         }
         struct dirent *entry;
@@ -3764,7 +3768,11 @@ int run_precommit(int argc, char *argv[], int level)
         {
             strcpy(staging_dir, main_dir);
             strcat(staging_dir, "/.samit/staging");
+            chdir(staging_dir);
+            printf("------------\n%s:\n", argv[i]);
             run_hooks(staging_dir, argv[i]);
+            chdir(staging_dir);
+            
             if (pre_commit_failed)
                 pre_commit_failed_static = 1;
         }
