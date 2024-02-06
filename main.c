@@ -2754,6 +2754,7 @@ int run_tag(int argc, char *argv[])
             }
             fclose(tag_file);
             chdir(main_dir);
+            return 0;
         }
         else
         {
@@ -2800,8 +2801,77 @@ int run_tag(int argc, char *argv[])
         }
         for (int i = 0; i < tag_count; i++)
         {
-            printf("%s\n", tag_names[i],i);
+            printf("%s\n", tag_names[i], i);
         }
+        return 0;
+    }
+}
+
+// grep
+int run_grep(int argc, char *argv[])
+{
+    if (argc == 9)
+    {
+        if (strcmp(argv[2], "-f") == 0 && strcmp(argv[4], "-p") == 0 && strcmp(argv[6], "-c") == 0 && strcmp(argv[8], "-n") == 0)
+        {
+            glob_t globbuf;
+            if (glob(argv[5], 0, NULL, &globbuf) != 0)
+            {
+                perror("No match.");
+                return 1;
+            }
+            return 0;
+        }
+        else
+        {
+            perror("Incorrect arguemtns!");
+            return 1;
+        }
+    }
+    if (argc == 8)
+    {
+        // without n (dont show num line)
+        if (strcmp(argv[2], "-f") == 0 && strcmp(argv[4], "-p") == 0 && strcmp(argv[6], "-c") == 0)
+        {
+            return 0;
+        }
+        else
+        {
+            perror("Incorrect arguemtns!");
+            return 1;
+        }
+    }
+    if (argc == 7)
+    {
+        // without c (work on main dir)
+        if (strcmp(argv[2], "-f") == 0 && strcmp(argv[4], "-p") == 0 && strcmp(argv[6], "-n") == 0)
+        {
+            return 0;
+        }
+        else
+        {
+            perror("Incorrect arguemtns!");
+            return 1;
+        }
+    }
+    if (argc == 6)
+    {
+
+        // without c (work on main dir) and without n (dont show num line)
+        if (strcmp(argv[2], "-f") == 0 && strcmp(argv[4], "-p"))
+        {
+            return 0;
+        }
+        else
+        {
+            perror("Incorrect arguemtns!");
+            return 1;
+        }
+    }
+    else
+    {
+        perror("Incorrect number of arguemtns!");
+        return 1;
     }
 }
 
