@@ -26,6 +26,8 @@ char config_dir[MAX_FILENAME_LENGTH];
 char alias_dir[MAX_FILENAME_LENGTH];
 char shortcuts_dir[MAX_FILENAME_LENGTH];
 
+char first_cwd_run[MAX_FILENAME_LENGTH];
+
 char branch_commit_dir[MAX_FILENAME_LENGTH];
 
 int commit_files_added = 0;
@@ -67,6 +69,17 @@ int create_configs(char *username, char *email)
     fprintf(file, "%s", "master");
     if (file == NULL)
         return 1;
+    fclose(file);
+    chdir("..");
+
+    // hooks
+    if (mkdir("hooks", 0755) != 0)
+    {
+        return 1;
+    }
+    chdir("hooks");
+    file = fopen("commit-allowed", "w");
+    fprintf(file, "%s", "yes");
     fclose(file);
     chdir("..");
 
@@ -2810,17 +2823,115 @@ int run_tag(int argc, char *argv[])
 // grep
 int run_grep(int argc, char *argv[])
 {
+
     if (argc == 9)
     {
         if (strcmp(argv[2], "-f") == 0 && strcmp(argv[4], "-p") == 0 && strcmp(argv[6], "-c") == 0 && strcmp(argv[8], "-n") == 0)
         {
-            glob_t globbuf;
-            if (glob(argv[5], 0, NULL, &globbuf) != 0)
+            chdir(main_dir);
+            chdir(".samit/branches");
+            FILE *find_commit = fopen("commit-id-list", "r");
+            while (fscanf(find_commit, "%s %s", commit_id, branch_name) != EOF)
             {
-                perror("No match.");
-                return 1;
+                if (strcmp(commit_id, argv[7]) == 0)
+                    break;
             }
-            return 0;
+            fclose(find_commit);
+            chdir(main_dir);
+            chdir(".samit/branches");
+            chdir(branch_name);
+            chdir("commits");
+            chdir(commit_id);
+
+            // glob_t globbuf;
+            // if (glob(argv[3], 0, NULL, &globbuf) != 0)
+            // {
+            //     printf("%s\n", argv[3]);
+            //     perror("No match.");
+            //     return 1;
+            // }
+            DIR *dir = opendir(".");
+            struct dirent *entry;
+            while ((entry = readdir(dir)) != NULL)
+            {
+
+                // for (int i = 0; i < globbuf.gl_pathc; i++)
+                // {
+                FILE *file = fopen(argv[3], "r");
+                int line_num = 1;
+                int check_if_found = 0;
+                int column_line = 0;
+                int column_line_found = 0;
+                int is_found = 0;
+                char inp_char;
+
+                while ((inp_char = fgetc(file)) != EOF)
+                {
+
+                    column_line++;
+
+                    if (inp_char == '\n')
+                    {
+                        line_num++;
+                        check_if_found = 0;
+                        column_line = 0;
+                    }
+                    // if (check_if_found < strlen(globbuf.gl_pathv[i]))
+                    if (check_if_found < strlen(argv[5]))
+                    {
+                        // if (inp_char == globbuf.gl_pathv[i][check_if_found])
+                        if (inp_char == argv[5][check_if_found])
+                        {
+                            check_if_found++;
+                            // if (check_if_found == strlen(globbuf.gl_pathv[i]))
+                            if (check_if_found == strlen(argv[5]))
+                            {
+                                is_found = 1;
+                                // column_line_found = column_line - strlen(globbuf.gl_pathv[i]) + 1;
+                                column_line_found = column_line - strlen(argv[5]) + 1;
+                                check_if_found = 0;
+                            }
+                        }
+                        else
+                        {
+                            check_if_found = 0;
+                        }
+                    }
+                    if (is_found)
+                    {
+                        is_found = 0;
+                        FILE *file_print = fopen(argv[3], "r");
+                        char line_print[MAX_LINE_LENGTH];
+                        for (int j = 0; j < line_num - 1; j++)
+                        {
+                            fgets(line_print, MAX_LINE_LENGTH, file_print);
+                        }
+                        char printing_character;
+                        for (int j = 1; j < column_line_found; j++)
+                        {
+                            printing_character = fgetc(file_print);
+                            printf("%c", printing_character);
+                        }
+                        // for (int j = 0; j < strlen(globbuf.gl_pathv[i]); j++)
+                        for (int j = 0; j < strlen(argv[5]); j++)
+                        {
+                            printing_character = fgetc(file_print);
+                            printf("\033[0;31m");
+                            printf("%c", printing_character);
+                            printf("\033[0m");
+                        }
+                        while ((printing_character = fgetc(file_print)) != '\n')
+                        {
+                            printf("%c", printing_character);
+                        }
+                        printf("   LINE: %d\n", line_num);
+                        fclose(file_print);
+                    }
+                }
+                fclose(file);
+                //}
+                return 0;
+            }
         }
         else
         {
@@ -2833,7 +2944,110 @@ int run_grep(int argc, char *argv[])
         // without n (dont show num line)
         if (strcmp(argv[2], "-f") == 0 && strcmp(argv[4], "-p") == 0 && strcmp(argv[6], "-c") == 0)
         {
-            return 0;
+            chdir(main_dir);
+            chdir(".samit/branches");
+            FILE *find_commit = fopen("commit-id-list", "r");
+            while (fscanf(find_commit, "%s %s", commit_id, branch_name) != EOF)
+            {
+                if (strcmp(commit_id, argv[7]) == 0)
+                    break;
+            }
+            fclose(find_commit);
+            chdir(main_dir);
+            chdir(".samit/branches");
+            chdir(branch_name);
+            chdir("commits");
+            chdir(commit_id);
+
+            // glob_t globbuf;
+            // if (glob(argv[3], 0, NULL, &globbuf) != 0)
+            // {
+            //     printf("%s\n", argv[3]);
+            //     perror("No match.");
+            //     return 1;
+            // }
+            DIR *dir = opendir(".");
+            struct dirent *entry;
+            while ((entry = readdir(dir)) != NULL)
+            {
+
+                // for (int i = 0; i < globbuf.gl_pathc; i++)
+                // {
+                FILE *file = fopen(argv[3], "r");
+                int line_num = 1;
+                int check_if_found = 0;
+                int column_line = 0;
+                int column_line_found = 0;
+                int is_found = 0;
+                char inp_char;
+
+                while ((inp_char = fgetc(file)) != EOF)
+                {
+
+                    column_line++;
+
+                    if (inp_char == '\n')
+                    {
+                        line_num++;
+                        check_if_found = 0;
+                        column_line = 0;
+                    }
+                    // if (check_if_found < strlen(globbuf.gl_pathv[i]))
+                    if (check_if_found < strlen(argv[5]))
+                    {
+                        // if (inp_char == globbuf.gl_pathv[i][check_if_found])
+                        if (inp_char == argv[5][check_if_found])
+                        {
+                            check_if_found++;
+                            // if (check_if_found == strlen(globbuf.gl_pathv[i]))
+                            if (check_if_found == strlen(argv[5]))
+                            {
+                                is_found = 1;
+                                // column_line_found = column_line - strlen(globbuf.gl_pathv[i]) + 1;
+                                column_line_found = column_line - strlen(argv[5]) + 1;
+                                check_if_found = 0;
+                            }
+                        }
+                        else
+                        {
+                            check_if_found = 0;
+                        }
+                    }
+                    if (is_found)
+                    {
+                        is_found = 0;
+                        FILE *file_print = fopen(argv[3], "r");
+                        char line_print[MAX_LINE_LENGTH];
+                        for (int j = 0; j < line_num - 1; j++)
+                        {
+                            fgets(line_print, MAX_LINE_LENGTH, file_print);
+                        }
+                        char printing_character;
+                        for (int j = 1; j < column_line_found; j++)
+                        {
+                            printing_character = fgetc(file_print);
+                            printf("%c", printing_character);
+                        }
+                        // for (int j = 0; j < strlen(globbuf.gl_pathv[i]); j++)
+                        for (int j = 0; j < strlen(argv[5]); j++)
+                        {
+                            printing_character = fgetc(file_print);
+                            printf("\033[0;31m");
+                            printf("%c", printing_character);
+                            printf("\033[0m");
+                        }
+                        while ((printing_character = fgetc(file_print)) != '\n')
+                        {
+                            printf("%c", printing_character);
+                        }
+                        printf("\n");
+                        fclose(file_print);
+                    }
+                }
+                fclose(file);
+                //}
+                return 0;
+            }
         }
         else
         {
@@ -2846,7 +3060,97 @@ int run_grep(int argc, char *argv[])
         // without c (work on main dir)
         if (strcmp(argv[2], "-f") == 0 && strcmp(argv[4], "-p") == 0 && strcmp(argv[6], "-n") == 0)
         {
-            return 0;
+            chdir(main_dir);
+
+            // glob_t globbuf;
+            // if (glob(argv[3], 0, NULL, &globbuf) != 0)
+            // {
+            //     printf("%s\n", argv[3]);
+            //     perror("No match.");
+            //     return 1;
+            // }
+            DIR *dir = opendir(".");
+            struct dirent *entry;
+            while ((entry = readdir(dir)) != NULL)
+            {
+
+                // for (int i = 0; i < globbuf.gl_pathc; i++)
+                // {
+                FILE *file = fopen(argv[3], "r");
+                int line_num = 1;
+                int check_if_found = 0;
+                int column_line = 0;
+                int column_line_found = 0;
+                int is_found = 0;
+                char inp_char;
+
+                while ((inp_char = fgetc(file)) != EOF)
+                {
+
+                    column_line++;
+
+                    if (inp_char == '\n')
+                    {
+                        line_num++;
+                        check_if_found = 0;
+                        column_line = 0;
+                    }
+                    // if (check_if_found < strlen(globbuf.gl_pathv[i]))
+                    if (check_if_found < strlen(argv[5]))
+                    {
+                        // if (inp_char == globbuf.gl_pathv[i][check_if_found])
+                        if (inp_char == argv[5][check_if_found])
+                        {
+                            check_if_found++;
+                            // if (check_if_found == strlen(globbuf.gl_pathv[i]))
+                            if (check_if_found == strlen(argv[5]))
+                            {
+                                is_found = 1;
+                                // column_line_found = column_line - strlen(globbuf.gl_pathv[i]) + 1;
+                                column_line_found = column_line - strlen(argv[5]) + 1;
+                                check_if_found = 0;
+                            }
+                        }
+                        else
+                        {
+                            check_if_found = 0;
+                        }
+                    }
+                    if (is_found)
+                    {
+                        is_found = 0;
+                        FILE *file_print = fopen(argv[3], "r");
+                        char line_print[MAX_LINE_LENGTH];
+                        for (int j = 0; j < line_num - 1; j++)
+                        {
+                            fgets(line_print, MAX_LINE_LENGTH, file_print);
+                        }
+                        char printing_character;
+                        for (int j = 1; j < column_line_found; j++)
+                        {
+                            printing_character = fgetc(file_print);
+                            printf("%c", printing_character);
+                        }
+                        // for (int j = 0; j < strlen(globbuf.gl_pathv[i]); j++)
+                        for (int j = 0; j < strlen(argv[5]); j++)
+                        {
+                            printing_character = fgetc(file_print);
+                            printf("\033[0;31m");
+                            printf("%c", printing_character);
+                            printf("\033[0m");
+                        }
+                        while ((printing_character = fgetc(file_print)) != '\n')
+                        {
+                            printf("%c", printing_character);
+                        }
+                        printf("   LINE: %d\n", line_num);
+                        fclose(file_print);
+                    }
+                }
+                fclose(file);
+                //}
+                return 0;
+            }
         }
         else
         {
@@ -2860,7 +3164,97 @@ int run_grep(int argc, char *argv[])
         // without c (work on main dir) and without n (dont show num line)
         if (strcmp(argv[2], "-f") == 0 && strcmp(argv[4], "-p"))
         {
-            return 0;
+            chdir(main_dir);
+
+            // glob_t globbuf;
+            // if (glob(argv[3], 0, NULL, &globbuf) != 0)
+            // {
+            //     printf("%s\n", argv[3]);
+            //     perror("No match.");
+            //     return 1;
+            // }
+            DIR *dir = opendir(".");
+            struct dirent *entry;
+            while ((entry = readdir(dir)) != NULL)
+            {
+
+                // for (int i = 0; i < globbuf.gl_pathc; i++)
+                // {
+                FILE *file = fopen(argv[3], "r");
+                int line_num = 1;
+                int check_if_found = 0;
+                int column_line = 0;
+                int column_line_found = 0;
+                int is_found = 0;
+                char inp_char;
+
+                while ((inp_char = fgetc(file)) != EOF)
+                {
+
+                    column_line++;
+
+                    if (inp_char == '\n')
+                    {
+                        line_num++;
+                        check_if_found = 0;
+                        column_line = 0;
+                    }
+                    // if (check_if_found < strlen(globbuf.gl_pathv[i]))
+                    if (check_if_found < strlen(argv[5]))
+                    {
+                        // if (inp_char == globbuf.gl_pathv[i][check_if_found])
+                        if (inp_char == argv[5][check_if_found])
+                        {
+                            check_if_found++;
+                            // if (check_if_found == strlen(globbuf.gl_pathv[i]))
+                            if (check_if_found == strlen(argv[5]))
+                            {
+                                is_found = 1;
+                                // column_line_found = column_line - strlen(globbuf.gl_pathv[i]) + 1;
+                                column_line_found = column_line - strlen(argv[5]) + 1;
+                                check_if_found = 0;
+                            }
+                        }
+                        else
+                        {
+                            check_if_found = 0;
+                        }
+                    }
+                    if (is_found)
+                    {
+                        is_found = 0;
+                        FILE *file_print = fopen(argv[3], "r");
+                        char line_print[MAX_LINE_LENGTH];
+                        for (int j = 0; j < line_num - 1; j++)
+                        {
+                            fgets(line_print, MAX_LINE_LENGTH, file_print);
+                        }
+                        char printing_character;
+                        for (int j = 1; j < column_line_found; j++)
+                        {
+                            printing_character = fgetc(file_print);
+                            printf("%c", printing_character);
+                        }
+                        // for (int j = 0; j < strlen(globbuf.gl_pathv[i]); j++)
+                        for (int j = 0; j < strlen(argv[5]); j++)
+                        {
+                            printing_character = fgetc(file_print);
+                            printf("\033[0;31m");
+                            printf("%c", printing_character);
+                            printf("\033[0m");
+                        }
+                        while ((printing_character = fgetc(file_print)) != '\n')
+                        {
+                            printf("%c", printing_character);
+                        }
+                        printf("\n");
+                        fclose(file_print);
+                    }
+                }
+                fclose(file);
+                //}
+                return 0;
+            }
         }
         else
         {
@@ -2872,6 +3266,16 @@ int run_grep(int argc, char *argv[])
     {
         perror("Incorrect number of arguemtns!");
         return 1;
+    }
+}
+
+int run_precommit(int argc, char *argv[], int level)
+{
+    if (level == 0)
+    {
+        chdir(main_dir);
+        chdir(".samit/staging");
+        DIR *dir = opendir(".");
     }
 }
 
@@ -2896,6 +3300,7 @@ int main(int argc, char *argv[])
         return 1;
     }
     strcpy(first_cwd, cwd);
+    strcpy(first_cwd_run, cwd);
 
     chdir("/");
     strcpy(config_global_dir, "/home/");
@@ -3159,6 +3564,22 @@ int main(int argc, char *argv[])
         if (doesHaveInit(cwd))
         {
             run_tag(argc_alias, argv_alias);
+        }
+    }
+
+    else if (strcmp(argv_alias[1], "grep") == 0)
+    {
+        if (doesHaveInit(cwd))
+        {
+            run_grep(argc_alias, argv_alias);
+        }
+    }
+
+    else if (strcmp(argv_alias[1], "pre-commit") == 0)
+    {
+        if (doesHaveInit(cwd))
+        {
+            run_precommit(argc_alias, argv_alias, 0);
         }
     }
 
